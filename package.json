@@ -1,0 +1,45 @@
+{
+	"name": "stocky",
+	"version": "0.1.0",
+	"description": "",
+	"main": "dist/index.js",
+	"scripts": {
+		"start": "node dist/index.js",
+		"build": "npm run build-ts",
+		"debug": "ts-node src/index.ts --inspect=5858",
+		"build-ts": "tsc",
+		"test": "jest --silent --verbose",
+		"testwatch": "jest --watchAll",
+		"testwatch:silent": "npm run testwatch -- --silent",
+		"dev": "nodemon --inspect=5858 -e ts --exec node -r ts-node/register ./src/index.ts",
+		"serve": "node dist/index.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/karatekaneen/stocky.git"
+	},
+	"author": "r.Bauhn",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/karatekaneen/stocky/issues"
+	},
+	"homepage": "https://github.com/karatekaneen/stocky#readme",
+	"devDependencies": {
+		"@types/express": "^4.17.7",
+		"@types/jest": "^26.0.4",
+		"@types/node": "^14.0.22",
+		"babel-eslint": "^10.1.0",
+		"eslint": "^7.4.0",
+		"jest": "^26.1.0",
+		"prettier": "^2.0.5",
+		"ts-jest": "^26.1.1",
+		"ts-node": "^8.10.2",
+		"typescript": "^3.9.6"
+	},
+	"dependencies": {
+		"@google-cloud/firestore": "^4.1.1",
+		"body-parser": "^1.19.0",
+		"dotenv": "^8.2.0",
+		"express": "^4.17.1"
+	}
+}
