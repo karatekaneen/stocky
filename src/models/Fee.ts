@@ -1,7 +1,10 @@
 /**
  * Class to store how the fees are calculated
  */
-class Fee {
+export default class Fee {
+	public percentage: number
+	public minimum: number
+
 	/**
 	 * @param {object} params
 	 * @param {number} params.percentage percentage that's paid in each trade
@@ -19,9 +22,11 @@ class Fee {
 	 * @param {number} minimum minimum fee
 	 * @returns {number}
 	 */
-	calculate(amount, percentage = this.percentage, minimum = this.minimum) {
+	calculate(
+		amount: number,
+		percentage: number = this.percentage,
+		minimum: number = this.minimum
+	): number {
 		return Math.max(minimum, amount * percentage)
 	}
 }
-
-export default Fee
