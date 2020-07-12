@@ -1,0 +1,25 @@
+{
+	"entrySignal": {
+		"stock": {
+			"id": 5234,
+			"name": "Atlas Copco A",
+			"list": "Large Cap Stockholm"
+		},
+		"date": "2000-01-02T23:00:00.000Z",
+		"price": 34.43,
+		"action": "buy",
+		"type": "enter"
+	},
+
+	"exitSignal": {
+		"stock": {
+			"id": 5234,
+			"name": "Atlas Copco A",
+			"list": "Large Cap Stockholm"
+		},
+		"date": "2000-01-19T23:00:00.000Z",
+		"price": 43.53,
+		"action": "sell",
+		"type": "exit"
+	}
+}
