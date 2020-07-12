@@ -1,11 +1,29 @@
 /* eslint-disable indent */
-import _Signal from './Signal'
+import Signal from './Signal'
 import DateSearcher from '../utils/DateSearcher'
+import Stock from './Stock'
+import { SignalParams, PricePoint } from '../types'
+import Fee from './Fee'
+
+type TradeParams = {
+	entry: Signal | SignalParams
+	exit: Signal | SignalParams
+	stock?: Stock
+	quantity?: number
+}
 
 /**
  * Class to calculate and store data about a particular trade.
  */
 class Trade {
+	public entry: Signal | SignalParams
+	public exit: Signal | SignalParams
+	public stock: Stock
+	public quantity: number
+
+	#feeInstance: Fee
+	#searchForDate: typeof DateSearcher
+
 	/**
 	 * Creates an instance of a Trade
 	 * @param {Object} params
@@ -17,60 +35,59 @@ class Trade {
 	 * @param {Class} deps.Signal
 	 */
 	constructor(
-		{ entry, exit, stock, quantity = 1 },
-		{ Signal = _Signal, searchForDate = DateSearcher } = {}
+		{ entry, exit, stock, quantity = 1 }: TradeParams,
+		{ _Signal = Signal, searchForDate = DateSearcher } = {}
 	) {
 		/**
 		 * Validates that the input is a Signal instance
-		 * @param {Object} s Hopefully a Signal
-		 * @returns {Boolean}
+		 * @param s Hopefully a Signal
 		 */
-		const isSignal = s => s instanceof Signal
+		const isSignal = (s: any): boolean => s instanceof Signal
 
-		this.entry = isSignal(entry) ? entry : new Signal(entry)
-		this.exit = isSignal(exit) ? exit : new Signal(exit)
+		this.entry = isSignal(entry) ? entry : new _Signal(entry)
+		this.exit = isSignal(exit) ? exit : new _Signal(exit)
 		this.stock = stock
 		this.quantity = quantity
-		this.searchForDate = searchForDate
+		// this.searchForDate = searchForDate
 	}
 
-	get entryPrice() {
+	get entryPrice(): number {
 		const price = this.entry.price
-		return this.feeInstance
+		return this.#feeInstance
 			? price +
 					this.calculatePriceWithFees({
 						price,
-						fee: this.feeInstance,
-						quantity: this.quantity
+						fee: this.#feeInstance,
+						quantity: this.quantity,
 					})
 			: price
 	}
-	get resultPercent() {
+	get resultPercent(): number {
 		return this.exitPrice / this.entryPrice - 1
 	}
 
-	get resultPerStock() {
+	get resultPerStock(): number {
 		return this.roundNumber(this.exitPrice - this.entryPrice)
 	}
 
-	get exitPrice() {
+	get exitPrice(): number {
 		const price = this.exit.price
 
-		return this.feeInstance
+		return this.#feeInstance
 			? price -
 					this.calculatePriceWithFees({
 						price,
-						fee: this.feeInstance,
-						quantity: this.quantity
+						fee: this.#feeInstance,
+						quantity: this.quantity,
 					})
 			: price
 	}
 
-	get totalFees() {
-		if (this.feeInstance) {
+	get totalFees(): number {
+		if (this.#feeInstance) {
 			return this.roundNumber(
-				this.feeInstance.calculate(this.entry.price * this.quantity) +
-					this.feeInstance.calculate(this.exit.price * this.quantity)
+				this.#feeInstance.calculate(this.entry.price * this.quantity) +
+					this.#feeInstance.calculate(this.exit.price * this.quantity)
 			)
 		}
 
@@ -81,7 +98,7 @@ class Trade {
 	 * Calculates the initial position value
 	 * @returns {number} Initial value
 	 */
-	get initialValue() {
+	get initialValue(): number {
 		return this.roundNumber(this.quantity * this.entryPrice)
 	}
 
@@ -89,7 +106,7 @@ class Trade {
 	 * Calculates the final position value
 	 * @returns {number} Final value
 	 */
-	get finalValue() {
+	get finalValue(): number {
 		return this.roundNumber(this.quantity * this.exitPrice)
 	}
 
@@ -97,7 +114,7 @@ class Trade {
 	 * Calculates the result in cash based on the result per stock multiplied with the quantity.
 	 * @returns {number} Result in $$$
 	 */
-	get resultInCash() {
+	get resultInCash(): number {
 		return this.roundNumber(this.quantity * this.resultPerStock)
 	}
 
@@ -107,8 +124,8 @@ class Trade {
 	 * @param {Fee} fee Instance of Fee
 	 * @returns {void}
 	 */
-	setFee(fee) {
-		this.feeInstance = fee
+	setFee(fee: Fee) {
+		this.#feeInstance = fee
 
 		return this
 	}
@@ -119,7 +136,7 @@ class Trade {
 	 * @param {Number} quantity The quantity of stocks traded
 	 * @returns {Trade} this
 	 */
-	setQuantity(quantity) {
+	setQuantity(quantity: number) {
 		this.quantity = quantity
 
 		return this
@@ -133,7 +150,15 @@ class Trade {
 	 * @param {Fee} params.fee Instance of fee, to calculate the fees
 	 * @returns {number} price per stock after fees
 	 */
-	calculatePriceWithFees({ price, fee, quantity }) {
+	calculatePriceWithFees({
+		price,
+		fee,
+		quantity,
+	}: {
+		price: number
+		fee: Fee
+		quantity: number
+	}): number {
 		return (price + fee.calculate(price * quantity)) / quantity
 	}
 
@@ -142,7 +167,7 @@ class Trade {
 	 * @param {number} amount the max amount to buy for
 	 * @returns {number} the number of shares to buy
 	 */
-	calculateQuantity(amount) {
+	calculateQuantity(amount: number): number {
 		return Math.floor(amount / this.entry.price) // Using the raw entry price to avoid double fees in the calculation
 	}
 
@@ -161,7 +186,13 @@ class Trade {
 		startDate = this.entry.date,
 		endDate = this.exit.date,
 		quantity = this.quantity,
-		searchForDate = this.searchForDate
+		searchForDate = this.#searchForDate,
+	}: {
+		priceData: PricePoint[]
+		startDate: Date
+		endDate: Date
+		quantity: number
+		searchForDate: typeof DateSearcher
 	}) {
 		const startIndex = searchForDate({ priceData, date: startDate })
 		const endIndex = searchForDate({ priceData, date: endDate })
@@ -181,8 +212,7 @@ class Trade {
 	 * @returns {Number} Rounded to 12 decimals
 	 * @todo Make private
 	 */
-	roundNumber(num) {
-		// TODO Extract to be able to use on other places
+	roundNumber(num: number): number {
 		return Math.round(num * 1e10) / 1e10
 	}
 }
