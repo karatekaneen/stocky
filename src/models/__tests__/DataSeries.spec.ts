@@ -6,10 +6,9 @@ describe('DataSeries', () => {
 			expect.assertions(1)
 			try {
 				const dataSeries = new DataSeries({
-					id: 123,
 					name: 'my series',
-					data: [{ time: '2002-05-05', value: 24.54 }]
-				})
+					data: [{ time: '2002-05-05', value: 24.54 }],
+				} as any)
 			} catch (e) {
 				expect(e.message).toBe('Name, type and data is required')
 			}
@@ -19,10 +18,9 @@ describe('DataSeries', () => {
 			expect.assertions(1)
 			try {
 				const dataSeries = new DataSeries({
-					id: 123,
 					name: '',
 					data: [{ time: '2002-05-05', value: 24.54 }],
-					type: 'line'
+					type: 'line',
 				})
 			} catch (e) {
 				expect(e.message).toBe('Name, type and data is required')
@@ -32,7 +30,7 @@ describe('DataSeries', () => {
 		it('throws when given no data', () => {
 			expect.assertions(1)
 			try {
-				const dataSeries = new DataSeries({ id: 123, name: 'my series', type: 'line' })
+				const dataSeries = new DataSeries({ name: 'my series', type: 'line' } as any)
 			} catch (e) {
 				expect(e.message).toBe('Name, type and data is required')
 			}
@@ -42,11 +40,10 @@ describe('DataSeries', () => {
 			expect.assertions(1)
 			try {
 				const dataSeries = new DataSeries({
-					id: 123,
 					name: 'my series',
 					data: [{ time: '2002-05-05', value: 24.54 }],
-					type: 'elephant'
-				})
+					type: 'elephant',
+				} as any)
 			} catch (e) {
 				expect(e.message).toBe('Unknown chart type')
 			}
@@ -55,14 +52,16 @@ describe('DataSeries', () => {
 		it('returns the data when given a correct linechart', () => {
 			expect.assertions(1)
 			const dataSeries = new DataSeries({
-				id: 123,
 				name: 'my series',
-				data: [{ time: '2002-05-05', value: null }, { time: '2002-05-05', value: 24.54 }],
-				type: 'line'
+				data: [
+					{ time: '2002-05-05', value: null },
+					{ time: '2002-05-05', value: 24.54 },
+				],
+				type: 'line',
 			})
 			expect(dataSeries.data).toEqual([
 				{ time: '2002-05-05', value: null },
-				{ time: '2002-05-05', value: 24.54 }
+				{ time: '2002-05-05', value: 24.54 },
 			])
 		})
 
@@ -70,10 +69,9 @@ describe('DataSeries', () => {
 			expect.assertions(1)
 			try {
 				const dataSeries = new DataSeries({
-					id: 123,
 					name: 'my series',
 					data: [],
-					type: 'line'
+					type: 'line',
 				})
 			} catch (err) {
 				expect(err.message).toBe('At least 1 datapoint must be provided')
@@ -83,17 +81,16 @@ describe('DataSeries', () => {
 		it('Should accept candle type', () => {
 			expect.assertions(1)
 			const dataSeries = new DataSeries({
-				id: 123,
 				name: 'my series',
 				data: [
 					{ time: '2002-05-05', open: null, high: null, low: null, close: null },
-					{ time: '2002-05-05', open: 11, high: 12, low: 11, close: 12 }
+					{ time: '2002-05-05', open: 11, high: 12, low: 11, close: 12 },
 				],
-				type: 'candlestick'
+				type: 'candlestick',
 			})
 			expect(dataSeries.data).toEqual([
 				{ time: '2002-05-05', open: null, high: null, low: null, close: null },
-				{ time: '2002-05-05', open: 11, high: 12, low: 11, close: 12 }
+				{ time: '2002-05-05', open: 11, high: 12, low: 11, close: 12 },
 			])
 		})
 
@@ -101,13 +98,12 @@ describe('DataSeries', () => {
 			expect.assertions(2)
 			try {
 				const dataSeries = new DataSeries({
-					id: 123,
 					name: 'my series',
 					data: [
 						{ time: '2002-05-05', open: null, high: 13, low: null, close: null },
-						{ time: '2002-05-05', open: 11, high: 12, low: 11, close: 12 }
+						{ time: '2002-05-05', open: 11, high: 12, low: 11, close: 12 },
 					],
-					type: 'candlestick'
+					type: 'candlestick',
 				})
 			} catch (err) {
 				expect(err.message).toBe('Invalid data format for candlestick chart')
@@ -115,13 +111,12 @@ describe('DataSeries', () => {
 
 			try {
 				const dataSeries = new DataSeries({
-					id: 123,
 					name: 'my series',
 					data: [
 						{ time: '2002-05-05', open: null, high: null, low: null, close: null },
-						{ time: '2002-05-05', open: 11, high: null, low: 11, close: 12 }
+						{ time: '2002-05-05', open: 11, high: null, low: 11, close: 12 },
 					],
-					type: 'candlestick'
+					type: 'candlestick',
 				})
 			} catch (err) {
 				expect(err.message).toBe('Invalid data format for candlestick chart')
@@ -131,14 +126,16 @@ describe('DataSeries', () => {
 		it('Should accept area type', () => {
 			expect.assertions(1)
 			const dataSeries = new DataSeries({
-				id: 123,
 				name: 'my series',
-				data: [{ time: '2002-05-05', value: null }, { time: '2002-05-05', value: 24.54 }],
-				type: 'area'
+				data: [
+					{ time: '2002-05-05', value: null },
+					{ time: '2002-05-05', value: 24.54 },
+				],
+				type: 'area',
 			})
 			expect(dataSeries.data).toEqual([
 				{ time: '2002-05-05', value: null },
-				{ time: '2002-05-05', value: 24.54 }
+				{ time: '2002-05-05', value: 24.54 },
 			])
 		})
 	})
