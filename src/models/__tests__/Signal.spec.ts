@@ -1,8 +1,8 @@
 import Signal from '../Signal'
 
-let validInput
+let validInput: any
 
-let signal
+let signal: Signal
 
 beforeEach(() => {
 	validInput = {
@@ -10,7 +10,7 @@ beforeEach(() => {
 		price: 99,
 		date: new Date('2020-01-19T15:16:36.143Z'),
 		action: 'buy',
-		type: 'enter'
+		type: 'enter',
 	}
 
 	signal = new Signal(validInput)
@@ -24,7 +24,7 @@ describe('Signal', () => {
 			price: 99,
 			status: 'executed',
 			stock: { id: '1235', list: 'Large Cap sthlm', name: 'HM B' },
-			type: 'enter'
+			type: 'enter',
 		})
 	})
 
@@ -33,7 +33,7 @@ describe('Signal', () => {
 			expect(signal.validateInput(validInput)).toBe(true)
 		})
 
-		it.each([[null, undefined, false]])('When stock is %p it throws', input => {
+		it.each([[null, undefined, false]])('When stock is %p it throws', (input) => {
 			const clone = { ...validInput }
 			clone.stock = input
 
@@ -88,58 +88,44 @@ describe('Signal', () => {
 			}
 		})
 
-		it.each([[null, '', false, 'buy', 'sell'], [false, false, false, true, true]])(
-			'requires action to be buy or sell',
-			(input, valid) => {
-				expect.assertions(1)
-				const clone = { ...validInput }
-				clone.action = input
-
-				try {
-					const s = new Signal(clone)
-					if (valid) {
-						expect(s instanceof Signal).toBe(true)
-					}
-				} catch (err) {
-					expect(err.message).toBe('Required field missing')
-				}
-			}
-		)
-
-		it.each([['BUY', 'SeLl', 'BuY', 'buy', 'sell']])('action is case insensitive', input => {
-			expect.assertions(1)
+		it.each([
+			[null, false],
+			['', false],
+			['buy', true],
+			['sell', true],
+		])('requires action to be buy or sell', (input, valid) => {
 			const clone = { ...validInput }
 			clone.action = input
 
-			const s = new Signal(clone)
-			expect(s instanceof Signal).toBe(true)
+			try {
+				const s = new Signal(clone)
+				if (valid) {
+					expect(s instanceof Signal).toBe(true)
+				}
+			} catch (err) {
+				expect(err.message).toBe('Required field missing')
+			}
 		})
 
-		it.each([[null, 'buy', false, 'enter', 'exit'], [false, false, false, true, true]])(
-			'requires type to be enter or exit',
-			(input, valid) => {
-				expect.assertions(1)
-				const clone = { ...validInput }
-				clone.type = input
-
-				try {
-					const s = new Signal(clone)
-					if (valid) {
-						expect(s instanceof Signal).toBe(true)
-					}
-				} catch (err) {
-					expect(err.message).toBe('Required field missing')
-				}
-			}
-		)
-
-		it.each([['enTER', 'eXit', 'ENTER', 'exit', 'enter']])('type is case insensitive', input => {
+		it.each([
+			[null, false],
+			['buy', false],
+			[false, false],
+			['enter', true],
+			['exit', true],
+		])('requires type to be enter or exit', (input, valid) => {
 			expect.assertions(1)
 			const clone = { ...validInput }
 			clone.type = input
 
-			const s = new Signal(clone)
-			expect(s instanceof Signal).toBe(true)
+			try {
+				const s = new Signal(clone)
+				if (valid) {
+					expect(s instanceof Signal).toBe(true)
+				}
+			} catch (err) {
+				expect(err.message).toBe('Required field missing')
+			}
 		})
 	})
 })
