@@ -1,12 +1,56 @@
-import _Signal from '../Signal'
-import _Trade from '../Trade'
+import Signal from '../Signal'
+import Trade from '../Trade'
+import DataFetcher from '../../utils/DataFetcher'
 import DateSearcher from '../../utils/DateSearcher'
-import _DataFetcher from '../../backendModules/DataFetcher'
+import Stock from '../Stock'
+import { PricePoint } from 'src/types'
+
+type StrategyContext = {
+	triggerPrice?: number
+	bias: 'bull' | 'bear' | 'neutral'
+}
+
+type StrategyRules = {
+	regimeSecurityID: string
+	regimeType: string
+	regimeLookback: number
+	regimeOperator: null
+}
+
+type SignalFunction = (x: string) => { signal?: Signal | null; context: StrategyContext }
+type OpenPositionPolicy = 'exclude' | 'conservative' | 'optimistic'
+
+type StrategyParams = {
+	strategyName?: string
+	initialContext?: StrategyContext
+	signalFunction?: SignalFunction
+	openPositionPolicy?: OpenPositionPolicy
+	_Signal?: typeof Signal
+	_Trade?: typeof Trade
+	_DataFetcher?: unknown
+	_DateSearcher?: typeof DateSearcher
+	rules?: StrategyRules
+} | null
 
 /**
  * Class that tests a set of data given a set of rules. Somewhat of a parent class to be extended.
  */
 class Strategy {
+	public context: StrategyContext | null
+	public strategyName: string
+	public openPositionPolicy: OpenPositionPolicy
+	public rules: StrategyRules = {
+		regimeLookback: null,
+		regimeOperator: null,
+		regimeSecurityID: null,
+		regimeType: null,
+	}
+	public regimeFilter: string
+
+	#Signal: typeof Signal
+	#Trade: typeof Trade
+	#searchForDate: typeof DateSearcher
+	#dataFetcher: DataFetcher
 	/**
 	 * Creates instance of the Strategy class
 	 * @param {Object} params
@@ -22,18 +66,22 @@ class Strategy {
 		initialContext,
 		signalFunction,
 		openPositionPolicy = 'conservative',
-		Signal = _Signal,
-		Trade = _Trade,
-		DataFetcher = _DataFetcher
-	} = {}) {
-		this.Signal = Signal
-		this.dataFetcher = new DataFetcher()
-		this.Trade = Trade
-		this.searchForDate = DateSearcher
+		rules,
+		_Signal = Signal,
+		_Trade = Trade,
+		_DateSearcher = DateSearcher,
+	}: StrategyParams) {
+		this.#Signal = _Signal
+		this.#dataFetcher = new DataFetcher()
+		this.#Trade = _Trade
+		this.#searchForDate = _DateSearcher
 		this.context = initialContext
 		this.strategyName = strategyName
 		this.openPositionPolicy = openPositionPolicy
-		this.rules = {}
+
+		if (rules) {
+			this.rules = rules
+		}
 
 		if (signalFunction) {
 			this.processBar = signalFunction
@@ -66,14 +114,20 @@ class Strategy {
 		startDate = null,
 		endDate = null,
 		initialContext = this.context,
-		dataFetcher = this.dataFetcher
-	} = {}) {
+		dataFetcher = this.#dataFetcher,
+	}: {
+		stock: Stock
+		startDate?: Date | null
+		endDate?: Date | null
+		initialContext?: StrategyContext
+		dataFetcher?: DataFetcher
+	}) {
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
 		// ? Maybe the better way is to add ability to override the default test function
 
-		const { priceData } = await dataFetcher.fetchStock({
+		const { priceData }: Stock = await dataFetcher.fetchStock({
 			id: stock.id,
-			fieldString: 'priceData{open, high, low, close, date}'
+			fieldString: 'priceData{open, high, low, close, date}',
 		})
 		let openTrade = null
 
@@ -81,7 +135,7 @@ class Strategy {
 		const { startIndex, endIndex } = this.extractData({
 			priceData,
 			startDate,
-			endDate
+			endDate,
 		})
 
 		if (!this.regimeFilter) {
@@ -89,7 +143,7 @@ class Strategy {
 				id: this.rules.regimeSecurityID,
 				type: this.rules.regimeType,
 				lookback: this.rules.regimeLookback,
-				operator: this.rules.regimeOperator
+				operator: this.rules.regimeOperator,
 			})
 		}
 		const testData = priceData.slice(startIndex, endIndex + 1) // Add 1 to include the last
@@ -102,7 +156,7 @@ class Strategy {
 						signalBar: originalArr[index - 1],
 						currentBar,
 						stock,
-						context: aggregate.context
+						context: aggregate.context,
 					})
 
 					// Update context
@@ -119,7 +173,7 @@ class Strategy {
 							signalBar: originalArr[index],
 							currentBar: { open: null, high: null, low: null, close: null, date: null },
 							stock,
-							context: aggregate.context
+							context: aggregate.context,
 						})
 
 						// If any signals, add them to output
@@ -131,7 +185,7 @@ class Strategy {
 							signals: aggregate.signals,
 							currentBar,
 							context: aggregate.context,
-							stock
+							stock,
 						})
 					}
 				}
@@ -140,19 +194,14 @@ class Strategy {
 			},
 			// Initial values:
 			{
-				signals: [],
-				context: initialContext,
-				pendingSignal: null,
-				closeOpenPosition: null
+				signals: [] as Signal[],
+				context: initialContext as StrategyContext,
+				pendingSignal: null as Signal | null,
+				closeOpenPosition: null as Signal | null,
 			}
 		)
 
-		const trades = this.summarizeSignals({
-			signals,
-			priceData,
-			closeOpenPosition,
-			stock
-		})
+		const trades = this.summarizeSignals({ signals, closeOpenPosition, stock })
 
 		// Separate the open trade in to own object as well
 		if (closeOpenPosition && trades.length > 0) {
@@ -165,7 +214,7 @@ class Strategy {
 			pendingSignal,
 			trades,
 			closeOpenPosition,
-			openTrade
+			openTrade,
 		}
 	}
 
@@ -189,8 +238,20 @@ class Strategy {
 	 * @returns {Signal | null} The signal if there is any open positions, else null.
 	 */
 	handleOpenPositions(
-		{ signals, currentBar, context, stock, openPositionPolicy = this.openPositionPolicy },
-		{ Signal = this.Signal } = {}
+		{
+			signals,
+			currentBar,
+			context,
+			stock,
+			openPositionPolicy = this.openPositionPolicy,
+		}: {
+			signals: Signal[]
+			currentBar: PricePoint
+			context: StrategyContext
+			stock: Stock
+			openPositionPolicy?: OpenPositionPolicy
+		},
+		{ Signal = this.#Signal } = {}
 	) {
 		let closeOpenPosition = null
 		if (signals.length > 0) {
@@ -204,31 +265,23 @@ class Strategy {
 			if (isSignalsLengthOdd && isLastSignalEnter) {
 				// There is an open position
 
-				if (openPositionPolicy === 'conservative' || openPositionPolicy === 'exclude') {
-					/*
-					If the openPositionPolicy the open p/l is calculated on where the "guaranteed" exit will be,
-					ie. the trailing trigger price for the exit
-					*/
-					closeOpenPosition = new Signal({
-						stock,
-						action: 'sell',
-						type: 'exit',
-						price: context.triggerPrice,
-						date: currentBar.date
-					})
-				} else if (openPositionPolicy === 'optimistic') {
-					/*
+				/*
+				If the openPositionPolicy the open p/l is calculated on where the "guaranteed" exit will be,
+				ie. the trailing trigger price for the exit.
+
 				If, on the other hand, the policy is optimistic the open p/l will be calculated as
 				the latest close.
 				*/
-					closeOpenPosition = new Signal({
-						stock,
-						action: 'sell',
-						type: 'exit',
-						price: currentBar.close,
-						date: currentBar.date
-					})
-				}
+				const useTriggerPrice =
+					openPositionPolicy === 'conservative' || openPositionPolicy === 'exclude'
+				closeOpenPosition = new Signal({
+					stock,
+					action: 'sell',
+					type: 'exit',
+					status: 'pending',
+					price: useTriggerPrice ? context.triggerPrice : currentBar.close,
+					date: currentBar.date instanceof Date ? currentBar.date : new Date(currentBar.date),
+				})
 			} else if (isSignalsLengthOdd && !isLastSignalEnter) {
 				// ! Logic error somewhere :(
 				throw new Error(
@@ -250,8 +303,18 @@ class Strategy {
 	 * @returns {Array<Trade>} List of trades.
 	 */
 	summarizeSignals(
-		{ signals, closeOpenPosition, openPositionPolicy = this.openPositionPolicy, stock },
-		{ Trade = this.Trade } = {}
+		{
+			signals,
+			closeOpenPosition,
+			stock,
+			openPositionPolicy = this.openPositionPolicy,
+		}: {
+			signals: Signal[]
+			closeOpenPosition: Signal | null
+			openPositionPolicy?: OpenPositionPolicy
+			stock: Stock
+		},
+		{ Trade = this.#Trade } = {}
 	) {
 		const numberOfSignals = signals.length
 		if (numberOfSignals < 1) {
@@ -290,7 +353,15 @@ class Strategy {
 	 * @param {Number} params.groupSize How many signals it should be in every group. Defaults to 2 because entry and exit
 	 * @returns {Array<Array<Signal>>} Nested arrays with signals in groups of 2 (by default)
 	 */
-	groupSignals({ signals, closeOpenPosition, groupSize = 2 }) {
+	groupSignals({
+		signals,
+		closeOpenPosition,
+		groupSize = 2,
+	}: {
+		signals: Signal[]
+		closeOpenPosition?: Signal | null
+		groupSize?: number
+	}): Signal[][] {
 		const signalList = [...signals]
 
 		if (closeOpenPosition) {
@@ -307,7 +378,7 @@ class Strategy {
 		}
 
 		// Check if it has invalid structure
-		const hasInvalidSignals = output.some(arr => {
+		const hasInvalidSignals = output.some((arr) => {
 			const isInvalidLength = arr.length !== 2
 			const hasInvalidSignalTypes =
 				!arr[0] || arr[0].type !== 'enter' || !arr[1] || arr[1].type !== 'exit'
@@ -323,7 +394,7 @@ class Strategy {
 		return output
 	}
 
-	createRegimeFilter() {
+	createRegimeFilter(x: any): Promise<void> {
 		throw new Error('No regime creation function provided')
 	}
 
@@ -331,7 +402,7 @@ class Strategy {
 	 * This is the main function to run the tests but since this is
 	 * a class meant to be extended each strategy has to override this.
 	 */
-	processBar() {
+	processBar(...arg: any): { signal?: Signal | null; context: StrategyContext } {
 		throw new Error('No signal function has been provided')
 	}
 
@@ -343,15 +414,23 @@ class Strategy {
 	 * @param {Date} params.endDate The last date to include
 	 * @returns {Object} with the `startIndex` and `endIndex` props.
 	 */
-	extractData({ priceData, startDate, endDate }) {
+	extractData({
+		priceData,
+		startDate,
+		endDate,
+	}: {
+		priceData: PricePoint[]
+		startDate: Date
+		endDate: Date
+	}): { startIndex: number; endIndex: number } {
 		const output = { startIndex: 0, endIndex: priceData.length - 1 }
 
 		if (startDate) {
-			output.startIndex = this.searchForDate({ priceData, date: startDate })
+			output.startIndex = this.#searchForDate({ priceData, date: startDate })
 		}
 
 		if (endDate) {
-			output.endIndex = this.searchForDate({ priceData, date: endDate })
+			output.endIndex = this.#searchForDate({ priceData, date: endDate })
 		}
 
 		return output
