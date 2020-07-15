@@ -3,19 +3,7 @@ import Trade from '../Trade'
 import DataFetcher from '../../utils/DataFetcher'
 import DateSearcher from '../../utils/DateSearcher'
 import Stock from '../Stock'
-import { PricePoint } from 'src/types'
-
-type StrategyContext = {
-	triggerPrice?: number
-	bias: 'bull' | 'bear' | 'neutral'
-}
-
-type StrategyRules = {
-	regimeSecurityID: string
-	regimeType: string
-	regimeLookback: number
-	regimeOperator: null
-}
+import { PricePoint, StrategyRules, StrategyContext, Bias } from '../../types'
 
 type SignalFunction = (x: string) => { signal?: Signal | null; context: StrategyContext }
 type OpenPositionPolicy = 'exclude' | 'conservative' | 'optimistic'
@@ -40,12 +28,17 @@ class Strategy {
 	public strategyName: string
 	public openPositionPolicy: OpenPositionPolicy
 	public rules: StrategyRules = {
-		regimeLookback: null,
-		regimeOperator: null,
 		regimeSecurityID: null,
 		regimeType: null,
+		regimeLookback: null,
+		regimeOperator: null,
+		entryFactor: null,
+		exitFactor: null,
+		bearishRegimeExitFactor: null,
+		entryInBearishRegime: null,
 	}
-	public regimeFilter: string
+
+	public regimeFilter: Map<string, Bias>
 
 	#Signal: typeof Signal
 	#Trade: typeof Trade
@@ -178,6 +171,7 @@ class Strategy {
 
 						// If any signals, add them to output
 						if (pendingSignal) {
+							pendingSignal.status = 'pending'
 							aggregate.pendingSignal = pendingSignal
 						}
 

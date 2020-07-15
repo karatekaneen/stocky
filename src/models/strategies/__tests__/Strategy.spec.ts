@@ -18,7 +18,7 @@ describe('Strategy class', () => {
 	})
 
 	it('Sets initial context', () => {
-		s = new Strategy({ initialContext: { bias: 'bull' } })
+		s = new Strategy({ initialContext: { bias: 'bull' } } as any)
 
 		expect(s.context).toEqual({ bias: 'bull' })
 	})
@@ -31,7 +31,7 @@ describe('Strategy class', () => {
 
 	describe('Test', () => {
 		beforeEach(() => {
-			s = new Strategy({ initialContext: null })
+			s = new Strategy({ initialContext: null } as any)
 
 			s.createRegimeFilter = jest.fn()
 		})
@@ -146,7 +146,7 @@ describe('Strategy class', () => {
 				open: null,
 			})
 
-			expect(pendingSignal).toEqual({ name: 'buy everything' })
+			expect(pendingSignal).toEqual({ name: 'buy everything', status: 'pending' })
 		})
 
 		it('Does not add null signals', async () => {

@@ -37,8 +37,13 @@ class Signal {
 		// TODO Make private when able to
 		this.stock = stock
 
+		if (date) {
+			this.date = date instanceof Date ? date : new Date(date)
+		} else {
+			this.date = new Date()
+		}
+
 		this.price = price
-		this.date = date instanceof Date ? date : new Date(date)
 		this.action = action
 		this.type = type
 		this.status = date === null && price === null ? 'pending' : 'executed'

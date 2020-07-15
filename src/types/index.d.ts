@@ -1,4 +1,5 @@
 import Stock from '../models/Stock'
+import Signal from 'src/models/Signal'
 
 export type PricePointFields = 'open' | 'close' | 'high' | 'low' | 'volume' | 'owners'
 
@@ -21,7 +22,7 @@ export type SignalParams = {
 	/**
 	 * Date when the signal was executed
 	 */
-	date: Date
+	date: Date | null | string
 	/**
 	 * If it is a buy or sell order
 	 */
@@ -39,3 +40,27 @@ export type SignalParams = {
 	 */
 	stock: Stock
 }
+
+export type StrategyRules = {
+	regimeSecurityID: string | number
+	regimeType: string
+	regimeLookback: number
+	regimeOperator: Comparator
+	entryFactor: number
+	exitFactor: number
+	bearishRegimeExitFactor: number
+	entryInBearishRegime: boolean
+}
+
+export type Comparator = '==' | '<=' | '>='
+
+export type StrategyContext = {
+	triggerPrice?: number
+	bias?: Bias
+	highPrice: number
+	lowPrice: number
+	regime: Bias
+	lastSignal?: Signal
+}
+
+export type Bias = 'bull' | 'bear' | 'neutral'

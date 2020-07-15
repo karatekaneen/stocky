@@ -1,7 +1,16 @@
 import Strategy from './Strategy'
 import Signal from '../Signal'
-import _DataFetcher from '../../backendModules/DataFetcher'
-import _TechnicalAnalyst from '../TechnicalAnalyst'
+import DataFetcher from '../../utils/DataFetcher'
+import { StrategyRules, StrategyContext, PricePoint, Comparator, Bias } from '../../types'
+import Stock from '../Stock'
+import TechnicalAnalyst from '../TechnicalAnalyst'
+
+type ProcessingInput = {
+	signalBar: PricePoint
+	currentBar: PricePoint
+	stock: Stock
+	context: StrategyContext
+}
 
 /**
  * "20% Flipper" by Nick Radge.
@@ -11,6 +20,9 @@ import _TechnicalAnalyst from '../TechnicalAnalyst'
  * @extends Strategy
  */
 class Flipper extends Strategy {
+	#dataFetcher: DataFetcher
+	#technicalAnalyst: TechnicalAnalyst
+
 	/**
 	 * Creates an instance of the Flipper Strategy.
 	 * @param {Object} params
@@ -21,20 +33,20 @@ class Flipper extends Strategy {
 	 */
 	constructor({
 		strategyName = 'flipper',
-		initialContext = {},
-		rules = {},
-		DataFetcher = _DataFetcher,
-		TechnicalAnalyst = _TechnicalAnalyst
+		initialContext = {} as StrategyContext,
+		rules = {} as StrategyRules,
+		_DataFetcher = DataFetcher as typeof DataFetcher,
+		_TechnicalAnalyst = TechnicalAnalyst,
 	} = {}) {
 		super({ strategyName, initialContext })
 
-		this.technicalAnalyst = new TechnicalAnalyst()
-		this.dataFetcher = new DataFetcher()
+		this.#technicalAnalyst = new _TechnicalAnalyst()
+		this.#dataFetcher = new _DataFetcher()
 
 		/**
 		 * These are the default rules for the strategy. Will probably not be overwritten very often.
 		 */
-		const defaultRules = {
+		const defaultRules: StrategyRules = {
 			entryFactor: 6 / 5,
 			exitFactor: 5 / 6,
 			entryInBearishRegime: false,
@@ -42,18 +54,18 @@ class Flipper extends Strategy {
 			regimeSecurityID: 19002,
 			regimeLookback: 200,
 			regimeOperator: '>=',
-			regimeType: 'SMA'
+			regimeType: 'SMA',
 		}
 
 		/**
 		 * This is the default context that's assigned if none is provided initially.
 		 */
-		const defaultContext = {
+		const defaultContext: StrategyContext = {
 			bias: 'neutral',
 			highPrice: null,
 			lowPrice: null,
 			triggerPrice: null,
-			regime: null
+			regime: null,
 		}
 
 		this.rules = { ...defaultRules, ...rules } // Merge the default rules with the ones given.
@@ -69,16 +81,16 @@ class Flipper extends Strategy {
 	 * @param {Object} params.context The context that's being carried between bars to keep the test's state.
 	 * @returns {Object} with `signal` (null if no signal is found, else Signal) and `context` to be carried to the next bar.
 	 */
-	processBar({ signalBar, currentBar, stock, context }) {
+	processBar({ signalBar, currentBar, stock, context }: ProcessingInput) {
 		// Update the context with the latest highs and lows
-		let newContext = {
+		let newContext: StrategyContext = {
 			...this.setHighLowPrices({
 				highPrice: context.highPrice,
 				lowPrice: context.lowPrice,
-				signalBar
+				signalBar,
 			}),
 			regime: this.updateRegime(signalBar), // Check the regime filter
-			lastSignal: context.lastSignal
+			lastSignal: context.lastSignal,
 		}
 
 		// Check if the signalbar triggered anything. Will be null if no signal is given which is ok to return as it is
@@ -91,7 +103,7 @@ class Flipper extends Strategy {
 			regime: newContext.regime,
 			signalBar,
 			currentBar,
-			stock
+			stock,
 		})
 
 		// The context may be updated by the triggering so using the spread to overwrite old values.
@@ -107,7 +119,7 @@ class Flipper extends Strategy {
 			console.log({
 				d: signalBar.date,
 				regime: this.updateRegime(signalBar),
-				x: newContext.regime
+				x: newContext.regime,
 			})
 		}
 
@@ -122,10 +134,21 @@ class Flipper extends Strategy {
 	 * @param {Boolean} params.useHighAndLow If the function should use the bar's high/low or only close value.
 	 * @returns {Object} with highPrice
 	 */
-	setHighLowPrices({ highPrice, lowPrice, signalBar, useHighAndLow = false }) {
+	setHighLowPrices({
+		highPrice,
+		lowPrice,
+		signalBar,
+		useHighAndLow = false,
+	}: {
+		highPrice: number
+		lowPrice: number
+		signalBar: PricePoint
+		useHighAndLow?: boolean
+	}): Pick<StrategyContext, 'highPrice' | 'lowPrice'> {
+		const output = { highPrice: null as number, lowPrice: null as number }
+
 		let tempHigh = signalBar.high
 		let tempLow = signalBar.low
-		const output = {}
 
 		// If useHighAndLow == false we only use the close value.
 		if (!useHighAndLow) {
@@ -153,26 +176,31 @@ class Flipper extends Strategy {
 	}
 
 	async createRegimeFilter(
-		{ id, type, lookback, operator },
-		{ dataFetcher = this.dataFetcher, technicalAnalyst = this.technicalAnalyst } = {}
+		{
+			id,
+			type,
+			lookback,
+			operator,
+		}: { id: string | number; type: string; lookback: number; operator: Comparator },
+		{ dataFetcher = this.#dataFetcher, technicalAnalyst = this.#technicalAnalyst } = {}
 	) {
 		const indexData = await dataFetcher.fetchStock({
 			id,
-			fieldString: 'id, priceData{close, date}'
+			fieldString: 'id, priceData{close, date}',
 		})
 
-		const movingAverage = technicalAnalyst.movingAverage({
+		const ma = technicalAnalyst.movingAverage({
 			field: 'close',
 			lookback,
 			data: indexData.priceData,
 			type,
-			includeField: true
+			includeField: true,
 		})
 
 		const comparator = this.createComparator(operator)
 
 		const output = new Map()
-		for (const [date, { price, average }] of movingAverage) {
+		for (const [date, { price, average }] of ma) {
 			output.set(date, comparator(price, average))
 		}
 
@@ -185,8 +213,8 @@ class Flipper extends Strategy {
 	// * Skapa två MAs med olika lookback (som definieras i rules)
 	// * Merge de två mapsen där värdet är ration mellan dem
 
-	createComparator(operator) {
-		return (price, average) => {
+	createComparator(operator: Comparator) {
+		return (price: number, average: number) => {
 			let condition
 			if (!price || !average) {
 				return null
@@ -204,8 +232,12 @@ class Flipper extends Strategy {
 		}
 	}
 
-	updateRegime(signalBar) {
-		const date = signalBar.date ? signalBar.date.toISOString() : new Date().toISOString()
+	updateRegime(signalBar: PricePoint) {
+		const date =
+			signalBar.date instanceof Date
+				? signalBar.date.toISOString()
+				: new Date(signalBar.date).toISOString()
+
 		return this.regimeFilter.get(date)
 	}
 
@@ -231,13 +263,18 @@ class Flipper extends Strategy {
 		lastSignal,
 		regime,
 		stock,
-		triggerPrice
+		triggerPrice,
+	}: StrategyContext & {
+		stock: Stock
+		signalBar: PricePoint
+		currentBar: PricePoint
+		currentBias: Bias
 	}) {
 		const context = {
 			bias: currentBias,
 			highPrice,
 			lowPrice,
-			triggerPrice
+			triggerPrice,
 		}
 
 		let signal = null
@@ -256,7 +293,8 @@ class Flipper extends Strategy {
 						price: currentBar.open,
 						date: currentBar.date,
 						action: 'buy',
-						type: 'enter'
+						status: 'executed',
+						type: 'enter',
 					})
 				}
 			} else {
@@ -282,7 +320,8 @@ class Flipper extends Strategy {
 						price: currentBar.open,
 						date: currentBar.date,
 						action: 'sell',
-						type: 'exit'
+						status: 'executed',
+						type: 'exit',
 					})
 				}
 			} else {
