@@ -1,4 +1,7 @@
-class TechnicalAnalyst {
+import { PricePoint } from '../types'
+
+export default class TechnicalAnalyst {
+	constructor() {}
 	/**
 	 * Calculates moving average.
 	 *
@@ -11,10 +14,22 @@ class TechnicalAnalyst {
 	 * @param {boolean} params.includeField Whether or not the field should be included.
 	 * @returns {Map<string, Object>} The ISO-date as key with the current date **included** so beware of look-ahead.
 	 */
-	movingAverage({ field, lookback, data, type, includeField }) {
+	movingAverage({
+		field,
+		lookback,
+		data,
+		type,
+		includeField,
+	}: {
+		field: keyof Omit<PricePoint, 'time' | 'date'>
+		lookback: number
+		data: PricePoint[]
+		type: string
+		includeField: boolean
+	}) {
 		const { output } = data.reduce(
 			(aggregate, current, index, arr) => {
-				const valueToWrite = { average: null }
+				const valueToWrite: { average: number; price?: number } = { average: null }
 
 				if (includeField) {
 					valueToWrite.price = current[field]
@@ -29,14 +44,14 @@ class TechnicalAnalyst {
 					valueToWrite.average = aggregate.sum / lookback
 				}
 
-				aggregate.output.set(current.date.toISOString(), valueToWrite)
+				const dateString =
+					typeof current.date === 'string' ? current.date : current.date.toISOString()
+				aggregate.output.set(dateString, valueToWrite)
 
 				return aggregate
 			},
-			{ output: new Map(), sum: 0 }
+			{ output: new Map<string, { average: number; price?: number }>(), sum: 0 }
 		)
 		return output
 	}
 }
-
-export default TechnicalAnalyst
