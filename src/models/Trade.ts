@@ -2,7 +2,7 @@
 import Signal from './Signal'
 import DateSearcher from '../utils/DateSearcher'
 import Stock from './Stock'
-import { SignalParams, PricePoint } from '../types'
+import { SignalParams, PricePoint, TradeDailyPerformance } from '../types'
 import Fee from './Fee'
 
 type TradeParams = {
@@ -94,6 +94,16 @@ class Trade {
 		return 0
 	}
 
+	get entryDate(): Date {
+		const d = this.entry.date
+		return d instanceof Date ? d : new Date(d)
+	}
+
+	get exitDate(): Date {
+		const d = this.exit.date
+		return d instanceof Date ? d : new Date(d)
+	}
+
 	/**
 	 * Calculates the initial position value
 	 * @returns {number} Initial value
@@ -183,17 +193,17 @@ class Trade {
 	 */
 	getTradePerformance({
 		priceData,
-		startDate = this.entry.date,
-		endDate = this.exit.date,
+		startDate = this.entryDate,
+		endDate = this.exitDate,
 		quantity = this.quantity,
 		searchForDate = this.#searchForDate,
 	}: {
 		priceData: PricePoint[]
-		startDate: Date
-		endDate: Date
-		quantity: number
-		searchForDate: typeof DateSearcher
-	}) {
+		startDate?: Date
+		endDate?: Date
+		quantity?: number
+		searchForDate?: typeof DateSearcher
+	}): TradeDailyPerformance[] {
 		const startIndex = searchForDate({ priceData, date: startDate })
 		const endIndex = searchForDate({ priceData, date: endDate })
 		const output = priceData
