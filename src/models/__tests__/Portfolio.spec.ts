@@ -2,11 +2,14 @@ import Portfolio from '../Portfolio'
 import Trade from '../Trade'
 import Fee from '../Fee'
 import Stock from '../Stock'
-import mockStock from './__mocks__/mockstock.json'
-import DataFetcher from '../../backendModules/DataFetcher'
-jest.mock('../../backendModules/DataFetcher')
+import * as mockStock from './__mocks__/mockstock.json'
+import * as OriginalDataFetcher from '../../utils/DataFetcher'
+jest.mock('../../utils/DataFetcher')
 
-const mockTrades = [
+const mockedDataFetcher = OriginalDataFetcher as jest.Mocked<typeof OriginalDataFetcher>
+const DataFetcher = mockedDataFetcher.default
+
+const mockTrades: any[] = [
 	{
 		entry: {
 			stock: {
@@ -15,13 +18,13 @@ const mockTrades = [
 				list: 'Mid Cap Stockholm',
 				lastPricePoint: null,
 				linkName: null,
-				dataSeries: []
+				dataSeries: [],
 			},
 			price: 101.9,
 			date: new Date('2019-01-20T15:16:36.143Z'),
 			action: 'buy',
 			type: 'enter',
-			status: 'executed'
+			status: 'executed',
 		},
 		exit: {
 			stock: {
@@ -30,13 +33,13 @@ const mockTrades = [
 				list: 'Mid Cap Stockholm',
 				lastPricePoint: null,
 				linkName: null,
-				dataSeries: []
+				dataSeries: [],
 			},
 			price: 117.24,
 			date: new Date('2020-01-19T15:16:36.143Z'),
 			action: 'sell',
 			type: 'exit',
-			status: 'executed'
+			status: 'executed',
 		},
 		stock: {
 			id: 5277,
@@ -44,11 +47,11 @@ const mockTrades = [
 			list: 'Mid Cap Stockholm',
 			lastPricePoint: null,
 			linkName: null,
-			dataSeries: []
+			dataSeries: [],
 		},
 		quantity: 1,
 		resultPerStock: 15.34,
-		resultPercent: 0.15053974484789
+		resultPercent: 0.15053974484789,
 	},
 	{
 		entry: {
@@ -58,13 +61,13 @@ const mockTrades = [
 				list: 'Mid Cap Stockholm',
 				lastPricePoint: null,
 				linkName: null,
-				dataSeries: []
+				dataSeries: [],
 			},
 			price: 110.47,
 			date: new Date('2020-01-19T15:16:36.143Z'),
 			action: 'buy',
 			type: 'enter',
-			status: 'executed'
+			status: 'executed',
 		},
 		exit: {
 			stock: {
@@ -73,13 +76,13 @@ const mockTrades = [
 				list: 'Mid Cap Stockholm',
 				lastPricePoint: null,
 				linkName: null,
-				dataSeries: []
+				dataSeries: [],
 			},
 			price: 85.67,
 			date: new Date('2021-02-19T15:16:36.143Z'),
 			action: 'sell',
 			type: 'exit',
-			status: 'executed'
+			status: 'executed',
 		},
 		stock: {
 			id: 6423,
@@ -87,11 +90,11 @@ const mockTrades = [
 			list: 'Mid Cap Stockholm',
 			lastPricePoint: null,
 			linkName: null,
-			dataSeries: []
+			dataSeries: [],
 		},
 		quantity: 1,
 		resultPerStock: -24.8,
-		resultPercent: -0.22449533810084188
+		resultPercent: -0.22449533810084188,
 	},
 	{
 		entry: {
@@ -101,13 +104,13 @@ const mockTrades = [
 				list: 'Mid Cap Stockholm',
 				lastPricePoint: null,
 				linkName: null,
-				dataSeries: []
+				dataSeries: [],
 			},
 			price: 66.73,
 			date: new Date('2020-01-19T15:16:36.143Z'),
 			action: 'buy',
 			type: 'enter',
-			status: 'executed'
+			status: 'executed',
 		},
 		exit: {
 			stock: {
@@ -116,13 +119,13 @@ const mockTrades = [
 				list: 'Mid Cap Stockholm',
 				lastPricePoint: null,
 				linkName: null,
-				dataSeries: []
+				dataSeries: [],
 			},
 			price: 50.05,
 			date: new Date('2020-02-19T15:16:36.143Z'),
 			action: 'sell',
 			type: 'exit',
-			status: 'executed'
+			status: 'executed',
 		},
 		stock: {
 			id: 5277,
@@ -130,21 +133,21 @@ const mockTrades = [
 			list: 'Mid Cap Stockholm',
 			lastPricePoint: null,
 			linkName: null,
-			dataSeries: []
+			dataSeries: [],
 		},
 		quantity: 1,
 		resultPerStock: -16.68,
-		resultPercent: -0.24996253559118842
-	}
+		resultPercent: -0.24996253559118842,
+	},
 ]
 
 describe('Portfolio', () => {
-	let p
+	let p: Portfolio
 
 	beforeEach(() => {
 		// Clear all instances and calls to constructor and all methods:
-		p = new Portfolio()
 		jest.clearAllMocks()
+		p = new Portfolio({}, { _DataFetcher: DataFetcher })
 	})
 
 	describe('Backtest', () => {
@@ -168,18 +171,17 @@ describe('Portfolio', () => {
 
 		it('Calculates max position value', async () => {
 			p.generateTimeline = jest.fn()
-
 			p.calculateMaxPositionValue = jest.fn(p.calculateMaxPositionValue)
 
 			await p.backtest({ trades: [mockTrades[0]] })
 
 			expect(p.calculateMaxPositionValue).toHaveBeenCalledTimes(1)
 
-			expect(p.calculateMaxPositionValue.mock.calls[0][0]).toEqual(100000)
+			expect((p.calculateMaxPositionValue as any).mock.calls[0][0]).toEqual(100000)
 		})
 
 		it('Can buy cheaper stock if there isnt room for more expensive', async () => {
-			const diversePricedStocks = [
+			const diversePricedStocks: any = [
 				{
 					entry: {
 						stock: {
@@ -188,13 +190,13 @@ describe('Portfolio', () => {
 							list: 'Mid Cap Stockholm',
 							lastPricePoint: null,
 							linkName: null,
-							dataSeries: []
+							dataSeries: [],
 						},
 						price: 100000.9,
 						date: new Date('2019-01-20T15:16:36.143Z'),
 						action: 'buy',
 						type: 'enter',
-						status: 'executed'
+						status: 'executed',
 					},
 					exit: {
 						stock: {
@@ -203,13 +205,13 @@ describe('Portfolio', () => {
 							list: 'Mid Cap Stockholm',
 							lastPricePoint: null,
 							linkName: null,
-							dataSeries: []
+							dataSeries: [],
 						},
 						price: 100000.24,
 						date: new Date('2020-01-19T15:16:36.143Z'),
 						action: 'sell',
 						type: 'exit',
-						status: 'executed'
+						status: 'executed',
 					},
 					stock: {
 						id: 5277,
@@ -217,11 +219,11 @@ describe('Portfolio', () => {
 						list: 'Mid Cap Stockholm',
 						lastPricePoint: null,
 						linkName: null,
-						dataSeries: []
+						dataSeries: [],
 					},
 					quantity: 1,
 					resultPerStock: 15.34,
-					resultPercent: 0.15053974484789
+					resultPercent: 0.15053974484789,
 				},
 				{
 					entry: {
@@ -231,13 +233,13 @@ describe('Portfolio', () => {
 							list: 'Mid Cap Stockholm',
 							lastPricePoint: null,
 							linkName: null,
-							dataSeries: []
+							dataSeries: [],
 						},
 						price: 110.47,
 						date: new Date('2020-01-19T15:16:36.143Z'),
 						action: 'buy',
 						type: 'enter',
-						status: 'executed'
+						status: 'executed',
 					},
 					exit: {
 						stock: {
@@ -246,13 +248,13 @@ describe('Portfolio', () => {
 							list: 'Mid Cap Stockholm',
 							lastPricePoint: null,
 							linkName: null,
-							dataSeries: []
+							dataSeries: [],
 						},
 						price: 85.67,
 						date: new Date('2021-02-19T15:16:36.143Z'),
 						action: 'sell',
 						type: 'exit',
-						status: 'executed'
+						status: 'executed',
 					},
 					stock: {
 						id: 5277,
@@ -260,12 +262,12 @@ describe('Portfolio', () => {
 						list: 'Mid Cap Stockholm',
 						lastPricePoint: null,
 						linkName: null,
-						dataSeries: []
+						dataSeries: [],
 					},
 					quantity: 1,
 					resultPerStock: -24.8,
-					resultPercent: -0.22449533810084188
-				}
+					resultPercent: -0.22449533810084188,
+				},
 			]
 
 			p.generateTimeline = jest.fn()
@@ -286,13 +288,13 @@ describe('Portfolio', () => {
 						list: 'Mid Cap Stockholm',
 						lastPricePoint: null,
 						linkName: null,
-						dataSeries: []
+						dataSeries: [],
 					},
 					price: 101.9,
 					date: new Date('2019-01-20T15:16:36.143Z'),
 					action: 'buy',
 					type: 'enter',
-					status: 'executed'
+					status: 'executed',
 				},
 				exit: {
 					stock: {
@@ -301,13 +303,13 @@ describe('Portfolio', () => {
 						list: 'Mid Cap Stockholm',
 						lastPricePoint: null,
 						linkName: null,
-						dataSeries: []
+						dataSeries: [],
 					},
 					price: 117.24,
 					date: new Date('2020-01-19T15:16:36.143Z'),
 					action: 'sell',
 					type: 'exit',
-					status: 'executed'
+					status: 'executed',
 				},
 				stock: {
 					id: 5277,
@@ -315,12 +317,12 @@ describe('Portfolio', () => {
 					list: 'Mid Cap Stockholm',
 					lastPricePoint: null,
 					linkName: null,
-					dataSeries: []
+					dataSeries: [],
 				},
 				quantity: 1,
 				resultPerStock: 15.34,
-				resultPercent: 0.15053974484789
-			})
+				resultPercent: 0.15053974484789,
+			} as any)
 
 			const p = new Portfolio({ startCapital: 100000 })
 			p.generateTimeline = jest.fn()
@@ -331,7 +333,7 @@ describe('Portfolio', () => {
 					new Map().set('2019-01-20T15:16:36.143Z', { entry: [tradeWithoutExit], exit: [] })
 				)
 
-			await p.backtest({ trades: [tradeWithoutExit] })
+			await p.backtest({ trades: [tradeWithoutExit] } as any)
 			expect(p.cashAvailable).toEqual(95108.8)
 		})
 
@@ -344,13 +346,13 @@ describe('Portfolio', () => {
 						list: 'Mid Cap Stockholm',
 						lastPricePoint: null,
 						linkName: null,
-						dataSeries: []
+						dataSeries: [],
 					},
 					price: 101.9,
 					date: new Date('2019-01-20T15:16:36.143Z'),
 					action: 'buy',
 					type: 'enter',
-					status: 'executed'
+					status: 'executed',
 				},
 				exit: {
 					stock: {
@@ -359,13 +361,13 @@ describe('Portfolio', () => {
 						list: 'Mid Cap Stockholm',
 						lastPricePoint: null,
 						linkName: null,
-						dataSeries: []
+						dataSeries: [],
 					},
 					price: 117.24,
 					date: new Date('2020-01-19T15:16:36.143Z'),
 					action: 'sell',
 					type: 'exit',
-					status: 'executed'
+					status: 'executed',
 				},
 				stock: {
 					id: 5277,
@@ -373,12 +375,12 @@ describe('Portfolio', () => {
 					list: 'Mid Cap Stockholm',
 					lastPricePoint: null,
 					linkName: null,
-					dataSeries: []
+					dataSeries: [],
 				},
 				quantity: 1,
 				resultPerStock: 15.34,
-				resultPercent: 0.15053974484789
-			})
+				resultPercent: 0.15053974484789,
+			} as any)
 
 			const p = new Portfolio({ startCapital: 100000 })
 			p.generateTimeline = jest.fn()
@@ -390,7 +392,7 @@ describe('Portfolio', () => {
 				)
 
 			expect(p.openPositions).toEqual(0)
-			await p.backtest({ trades: [tradeWithoutExit] })
+			await p.backtest({ trades: [tradeWithoutExit] } as any)
 			expect(p.openPositions).toEqual(1)
 		})
 
@@ -425,7 +427,7 @@ describe('Portfolio', () => {
 			p.generateTimeline = jest.fn()
 
 			await p.backtest({ trades: mockTrades })
-			expect(p.openTrades.size).toBe(0)
+			expect(p.openTrades.length).toBe(0)
 		})
 
 		it('Adds closed trades to historicalTrades', async () => {
@@ -466,9 +468,6 @@ describe('Portfolio', () => {
 			await p.backtest({ trades: mockTrades })
 
 			expect(p.generateTimeline).toHaveBeenCalledTimes(1)
-			expect(p.generateTimeline.mock.calls[0][0].firstTrade.entry.price).toBe(
-				mockTrades[0].entry.price
-			)
 		})
 
 		it('Does not call to generate timeline if there isnt any trades', async () => {
@@ -488,7 +487,7 @@ describe('Portfolio', () => {
 				['2019-01-20T15:16:36.143Z', { cashAvailable: 95108.8 }],
 				['2020-01-19T15:16:36.143Z', { cashAvailable: 90760.42000000001 }],
 				['2020-02-19T15:16:36.143Z', { cashAvailable: 94514.17000000001 }],
-				['2021-02-19T15:16:36.143Z', { cashAvailable: 98369.32 }]
+				['2021-02-19T15:16:36.143Z', { cashAvailable: 98369.32 }],
 			])
 		})
 
@@ -500,50 +499,34 @@ describe('Portfolio', () => {
 		it('Calls to group trades by stock ID', async () => {
 			p.getDateMap = jest.fn().mockReturnValue(new Map())
 			p.groupTradesByStock = jest.fn().mockReturnValue(new Map())
-			const firstTrade = new Trade(mockTrades[0])
 
-			await p.generateTimeline({ trades: mockTrades, timeline: new Map(), firstTrade })
+			await p.generateTimeline({ trades: mockTrades, timeline: new Map() })
 
 			expect(p.groupTradesByStock).toHaveBeenCalledWith(mockTrades)
 		})
 
-		it('Creates a DataFetcher', async () => {
-			p.getDateMap = jest.fn().mockReturnValue(new Map())
-
-			const resp = await p.generateTimeline({
-				trades: mockTrades.map(t => new Trade(t)),
-				timeline: new Map([
-					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
-					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
-					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
-				]),
-				queue: jest.fn().mockResolvedValue([])
-			})
-			expect(DataFetcher).toHaveBeenCalledTimes(1)
-		})
-
 		it('Passes the data from fetchstock in to each trade instance', async () => {
+			DataFetcher.mockImplementationOnce(
+				() => ({ fetchStock: (x: any) => ({ priceData: [x.id] }) } as any)
+			)
+
+			p = new Portfolio()
 			p.getDateMap = jest.fn().mockReturnValue(new Map())
 
-			DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => ({ priceData: [x.id] }) }))
-
-			const trades = mockTrades.map(t => {
+			const trades = mockTrades.map((t: any) => {
 				const trade = new Trade(t)
 				trade.getTradePerformance = jest.fn().mockReturnValue([])
 				return trade
 			})
 
-			const resp = await p.generateTimeline({
+			await p.generateTimeline({
 				trades,
 				timeline: new Map([
 					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
 					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
 					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }],
 				]),
-				DataFetcher
-				// queue: jest.fn().mockResolvedValue([])
 			})
 
 			expect(trades[0].getTradePerformance).toHaveBeenCalledWith({ priceData: [5277] })
@@ -556,15 +539,14 @@ describe('Portfolio', () => {
 
 			const queue = jest.fn().mockResolvedValue([])
 			const resp = await p.generateTimeline({
-				trades: mockTrades.map(t => new Trade(t)),
+				trades: mockTrades.map((t: any) => new Trade(t)),
 				timeline: new Map([
 					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
 					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760.42000000001 }],
 					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514.17000000001 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }],
 				]),
-				DataFetcher,
-				queue
+				queue,
 			})
 
 			expect(queue).toHaveBeenCalledTimes(1)
@@ -575,29 +557,26 @@ describe('Portfolio', () => {
 		})
 
 		it('Loops over each trade and adding its value and p/l for each date', async () => {
-			p.getDateMap = jest
-				.fn()
-				.mockReturnValue(
-					new Map([
-						['2000-05-23T22:00:00.000Z', {}],
-						['2000-05-30T22:00:00.000Z', {}],
-						['2000-06-15T22:00:00.000Z', {}],
-						['2000-06-30T22:00:00.000Z', {}]
-					])
-				)
+			DataFetcher.mockImplementationOnce(() => ({ fetchStock: (x: any) => [x.id] } as any))
 
-			DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => [x.id] }))
+			p = new Portfolio()
+			p.getDateMap = jest.fn().mockReturnValue(
+				new Map([
+					['2000-05-23T22:00:00.000Z', {}],
+					['2000-05-30T22:00:00.000Z', {}],
+					['2000-06-15T22:00:00.000Z', {}],
+					['2000-06-30T22:00:00.000Z', {}],
+				])
+			)
 
-			const trades = mockTrades.map(t => {
+			const trades = mockTrades.map((t: any) => {
 				const trade = new Trade(t)
-				trade.getTradePerformance = jest
-					.fn()
-					.mockReturnValue([
-						{ date: new Date('2000-05-23T22:00:00.000Z'), value: 100 },
-						{ date: new Date('2000-05-30T22:00:00.000Z'), value: 10 },
-						{ date: new Date('2000-06-15T22:00:00.000Z'), value: 1000 },
-						{ date: new Date('2000-06-30T22:00:00.000Z'), value: 1 }
-					])
+				trade.getTradePerformance = jest.fn().mockReturnValue([
+					{ date: new Date('2000-05-23T22:00:00.000Z'), value: 100 },
+					{ date: new Date('2000-05-30T22:00:00.000Z'), value: 10 },
+					{ date: new Date('2000-06-15T22:00:00.000Z'), value: 1000 },
+					{ date: new Date('2000-06-30T22:00:00.000Z'), value: 1 },
+				])
 				return trade
 			})
 
@@ -607,9 +586,8 @@ describe('Portfolio', () => {
 					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
 					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
 					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }],
 				]),
-				DataFetcher
 			})
 
 			expect(resp.get('2000-05-23T22:00:00.000Z').cashAvailable).toBe(95108.8)
@@ -622,29 +600,26 @@ describe('Portfolio', () => {
 		})
 
 		it('Keeps track of how many positions open for each day', async () => {
-			p.getDateMap = jest
-				.fn()
-				.mockReturnValue(
-					new Map([
-						['2000-05-23T22:00:00.000Z', {}],
-						['2000-05-30T22:00:00.000Z', {}],
-						['2000-06-15T22:00:00.000Z', {}],
-						['2000-06-30T22:00:00.000Z', {}]
-					])
-				)
+			DataFetcher.mockImplementationOnce(() => ({ fetchStock: (x: any) => [x.id] } as any))
 
-			DataFetcher.mockImplementationOnce(() => ({ fetchStock: x => [x.id] }))
+			p = new Portfolio()
+			p.getDateMap = jest.fn().mockReturnValue(
+				new Map([
+					['2000-05-23T22:00:00.000Z', {}],
+					['2000-05-30T22:00:00.000Z', {}],
+					['2000-06-15T22:00:00.000Z', {}],
+					['2000-06-30T22:00:00.000Z', {}],
+				])
+			)
 
-			const trades = mockTrades.map(t => {
+			const trades = mockTrades.map((t: any) => {
 				const trade = new Trade(t)
-				trade.getTradePerformance = jest
-					.fn()
-					.mockReturnValue([
-						{ date: new Date('2000-05-23T22:00:00.000Z'), value: 100 },
-						{ date: new Date('2000-05-30T22:00:00.000Z'), value: 10 },
-						{ date: new Date('2000-06-15T22:00:00.000Z'), value: 1000 },
-						{ date: new Date('2000-06-30T22:00:00.000Z'), value: 1 }
-					])
+				trade.getTradePerformance = jest.fn().mockReturnValue([
+					{ date: new Date('2000-05-23T22:00:00.000Z'), value: 100 },
+					{ date: new Date('2000-05-30T22:00:00.000Z'), value: 10 },
+					{ date: new Date('2000-06-15T22:00:00.000Z'), value: 1000 },
+					{ date: new Date('2000-06-30T22:00:00.000Z'), value: 1 },
+				])
 				return trade
 			})
 
@@ -654,9 +629,8 @@ describe('Portfolio', () => {
 					['2000-05-23T22:00:00.000Z', { cashAvailable: 95108.8 }],
 					['2000-05-30T22:00:00.000Z', { cashAvailable: 90760 }],
 					['2000-06-15T22:00:00.000Z', { cashAvailable: 94514 }],
-					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }]
+					['2000-06-30T22:00:00.000Z', { cashAvailable: 98369.32 }],
 				]),
-				DataFetcher
 			})
 
 			expect(resp.get('2000-05-23T22:00:00.000Z').numberOfPositionsOpen).toBe(3)
@@ -670,7 +644,7 @@ describe('Portfolio', () => {
 
 	describe('Group trades by stock', () => {
 		it('Groups trades by their IDs', () => {
-			const resp = p.groupTradesByStock(mockTrades.map(t => new Trade(t)))
+			const resp = p.groupTradesByStock(mockTrades.map((t) => new Trade(t)))
 			expect(resp.get(5277).length).toBe(2)
 			expect([...resp.keys()]).toEqual([5277, 6423])
 		})
@@ -682,25 +656,39 @@ describe('Portfolio', () => {
 	})
 
 	describe('Get Date Map', () => {
-		it('Creates a DataFetcher', async () => {
-			await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
-			expect(DataFetcher).toHaveBeenCalledTimes(1)
-		})
-
-		it('Fetches the data from the stock that was the first trade', async () => {
-			await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
+		it('Fetches the data from the specified ID', async () => {
+			await p.getDateMap()
 			expect(DataFetcher.mock.instances[0].fetchStock).toHaveBeenCalledWith({
 				fieldString: 'priceData{ date }',
-				id: 19002
+				id: 19002,
 			})
 		})
 
+		it.todo('Should not have a hardcoded stock id')
+
 		it('Converts the priceData array to a map of dates', async () => {
-			const fetchStock = jest.fn().mockResolvedValue(new Stock({ data: mockStock }))
-			DataFetcher.mockImplementationOnce(() => ({ fetchStock }))
-			const resp = await p.getDateMap({ stock: { id: 123 } }, DataFetcher)
+			const fetchStock = jest.fn().mockResolvedValue(new Stock(mockStock))
+			DataFetcher.mockImplementationOnce(() => ({ fetchStock } as any))
+
+			p = new Portfolio()
+			const resp = await p.getDateMap()
 
 			expect(resp.size).toBe(5027)
+		})
+
+		it('Propagates Errors', async () => {
+			expect.hasAssertions()
+
+			const fetchStock = jest.fn().mockRejectedValue(new Error('this went poopoo'))
+			DataFetcher.mockImplementationOnce(() => ({ fetchStock } as any))
+
+			p = new Portfolio()
+
+			try {
+				await p.getDateMap()
+			} catch (err) {
+				expect(err.message).toBe('this went poopoo')
+			}
 		})
 	})
 
@@ -717,7 +705,7 @@ describe('Portfolio', () => {
 				'2019-01-20T15:16:36.143Z',
 				'2020-01-19T15:16:36.143Z',
 				'2020-02-19T15:16:36.143Z',
-				'2021-02-19T15:16:36.143Z'
+				'2021-02-19T15:16:36.143Z',
 			])
 		})
 
@@ -753,14 +741,14 @@ describe('Portfolio', () => {
 
 	describe('Rank Signals', () => {
 		it('Shuffles order if selectionMethod is random', () => {
-			const array = new Array(100).fill(0).map((_, i) => i)
+			const array: any[] = new Array(100).fill(0).map((_, i) => i)
 
 			const resp = p.rankSignals(array, 'random', 50)
 			expect(resp).not.toEqual(array.slice(0, 50))
 		})
 
 		it('Returns the best trades when selectionmethod is "best"', () => {
-			const array = new Array(100)
+			const array: any[] = new Array(100)
 				.fill(0)
 				.map((_, i) => ({ resultPercent: i }))
 				.sort((a, b) => 0.5 - Math.random())
@@ -771,12 +759,12 @@ describe('Portfolio', () => {
 				{ resultPercent: 98 },
 				{ resultPercent: 97 },
 				{ resultPercent: 96 },
-				{ resultPercent: 95 }
+				{ resultPercent: 95 },
 			])
 		})
 
 		it('Returns the worst trades when selectionmethod is "worst"', () => {
-			const array = new Array(100)
+			const array: any[] = new Array(100)
 				.fill(0)
 				.map((_, i) => ({ resultPercent: i }))
 				.sort((a, b) => 0.5 - Math.random())
@@ -787,12 +775,12 @@ describe('Portfolio', () => {
 				{ resultPercent: 1 },
 				{ resultPercent: 2 },
 				{ resultPercent: 3 },
-				{ resultPercent: 4 }
+				{ resultPercent: 4 },
 			])
 		})
 
 		it('returns original array if length is <= availableSlots', () => {
-			const array = new Array(100)
+			const array: any[] = new Array(100)
 				.fill(0)
 				.map((_, i) => i)
 				.sort((a, b) => 0.5 - Math.random())

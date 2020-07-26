@@ -1,14 +1,47 @@
 /* eslint-disable indent */
-import _Trade from './Trade'
-import _Fee from './Fee'
-import _DataFetcher from '../backendModules/DataFetcher'
-import _queue from '../utils/queue'
+import Trade from './Trade'
+import Fee from './Fee'
+import DataFetcher from '../utils/DataFetcher'
+import queue from '../utils/queue'
+import { SignalType, TradeDailyPerformance } from 'src/types'
+
+type RankingMethod = 'random' | 'best' | 'worst'
+
+type PortfolioBalance = {
+	cashAvailable?: number
+	total?: number
+	positions?: { id: number | string; value: number }[]
+	totalPositionValue?: number
+	numberOfPositionsOpen?: number
+}
+
+type PortfolioParams = {
+	startCapital?: number
+	maxNumberOfStocks?: number
+	selectionMethod?: RankingMethod
+	fee?: Fee
+	feePercentage?: number
+	feeMinimum?: number
+}
 
 class Portfolio {
 	// these need to be created to avoid Jest from throwing:
 	// Trade = null
+	#Trade: typeof Trade
+	#Fee: typeof Fee
+	#dataFetcher: DataFetcher
+	#queue: typeof queue
 
-	// availableSlots = 0 // TODO Make private when able to
+	public historicalTrades = [] as Trade[]
+	public openTrades = [] as Trade[]
+	public signalsNotTaken = 0
+	public startCapital: number
+	public cashAvailable: number
+	public maxNumberOfStocks: number
+	public availableSlots: number
+	public selectionMethod: RankingMethod
+	public fee: Fee
+	public timeline: Map<string, PortfolioBalance>
 
 	constructor(
 		{
@@ -17,17 +50,15 @@ class Portfolio {
 			selectionMethod = 'random',
 			fee,
 			feePercentage = 0.0025,
-			feeMinimum = 1
-		} = {},
-		{ Trade = _Trade, Fee = _Fee, DataFetcher = _DataFetcher, queue = _queue } = {}
+			feeMinimum = 1,
+		} = {} as PortfolioParams,
+		{ _Trade = Trade, _Fee = Fee, _DataFetcher = DataFetcher, _queue = queue } = {}
 	) {
-		this.Trade = Trade
-		this.DataFetcher = DataFetcher
-		this.queue = queue
+		this.#Trade = _Trade
+		this.#dataFetcher = new _DataFetcher()
+		this.#queue = _queue
 
-		this.historicalTrades = []
 		this.timeline = new Map()
-		this.openTrades = []
 		this.signalsNotTaken = 0
 		this.startCapital = startCapital
 		this.cashAvailable = startCapital
@@ -41,7 +72,7 @@ class Portfolio {
 		return this.maxNumberOfStocks - this.availableSlots
 	}
 
-	async backtest({ trades, fee = this.fee, Trade = this.Trade }) {
+	async backtest({ trades, fee = this.fee }: { trades: Trade[]; fee?: Fee }) {
 		/*
 		1. Generate date map from signals within trades with object with entry & exit for each date
 		2. Loop over the dates
@@ -63,13 +94,13 @@ class Portfolio {
 		// Reset the cash available just in case this isn't the first test ran on this instance
 		this.cashAvailable = this.startCapital
 
-		const currentlyHolding = new Map()
+		const currentlyHolding = new Map<string, Trade[]>()
 		const signalMap = this.generateSignalMaps(trades)
 
 		signalMap.forEach(({ entry, exit }, date) => {
 			const tradesToClose = currentlyHolding.get(date)
 			if (tradesToClose) {
-				tradesToClose.forEach(trade => {
+				tradesToClose.forEach((trade) => {
 					this.historicalTrades.push(trade)
 					this.cashAvailable += trade.finalValue
 					this.availableSlots++
@@ -80,43 +111,45 @@ class Portfolio {
 
 			if (this.availableSlots && entry.length > 0) {
 				let signalsTaken = 0
-				const tradesToOpen = this.rankSignals(
-					entry,
-					this.selectionMethod,
-					this.availableSlots
-				).forEach(t => {
-					/*
+
+				this.rankSignals(entry, this.selectionMethod, this.availableSlots).forEach(
+					(t: Trade) => {
+						/*
 						t might be pure JSON if it's loaded from db and not directly from the test.
 						Then it needs to be instantiated to be able to use the Trade class' methods.
 						*/
-					const trade = t instanceof Trade ? t : new Trade(t)
-					const dateString = trade.exit.date.toISOString()
+						const trade = t instanceof Trade ? t : new Trade(t)
+						const dateString =
+							typeof trade.exit.date === 'string'
+								? trade.exit.date
+								: trade.exit.date.toISOString()
 
-					const maxPositionValue = this.calculateMaxPositionValue(
-						this.cashAvailable,
-						fee,
-						this.availableSlots
-					)
+						const maxPositionValue = this.calculateMaxPositionValue(
+							this.cashAvailable,
+							fee,
+							this.availableSlots
+						)
 
-					const quantity = trade.calculateQuantity(maxPositionValue)
+						const quantity = trade.calculateQuantity(maxPositionValue)
 
-					if (quantity > 0) {
-						trade.setQuantity(quantity)
+						if (quantity > 0) {
+							trade.setQuantity(quantity)
 
-						// "Withdraw cash"
-						this.cashAvailable -= trade.initialValue
+							// "Withdraw cash"
+							this.cashAvailable -= trade.initialValue
 
-						// Remove slot from availability
-						this.availableSlots--
-						signalsTaken++
+							// Remove slot from availability
+							this.availableSlots--
+							signalsTaken++
 
-						const existingTrades = currentlyHolding.get(dateString)
+							const existingTrades = currentlyHolding.get(dateString)
 
-						existingTrades
-							? currentlyHolding.set(dateString, [...existingTrades, trade])
-							: currentlyHolding.set(dateString, [trade])
+							existingTrades
+								? currentlyHolding.set(dateString, [...existingTrades, trade])
+								: currentlyHolding.set(dateString, [trade])
+						}
 					}
-				})
+				)
 
 				this.signalsNotTaken += entry.length - signalsTaken
 			}
@@ -124,11 +157,10 @@ class Portfolio {
 		})
 
 		if (signalMap.size > 0) {
-			const firstTrade = signalMap.values().next().value.entry[0] // Get the first entry to know from where to fetch data
-			await this.generateTimeline({ firstTrade })
+			await this.generateTimeline()
 		}
 
-		this.openTrades = currentlyHolding
+		this.openTrades = [...currentlyHolding.values()].flat()
 	}
 
 	/**
@@ -138,7 +170,11 @@ class Portfolio {
 	 * @param {number} availableSlots Number of open position slots that can be filled
 	 * @returns {number} the max amount to buy a single stock for
 	 */
-	calculateMaxPositionValue(cashAvailable, feeInstance, availableSlots = this.availableSlots) {
+	calculateMaxPositionValue(
+		cashAvailable: number,
+		feeInstance: Fee,
+		availableSlots = this.availableSlots
+	) {
 		return (cashAvailable - feeInstance.calculate(cashAvailable)) / availableSlots
 	}
 
@@ -152,7 +188,7 @@ class Portfolio {
 	 * @param {number} availableSlots The maximum number of trades to take
 	 * @returns {Array<Trade>} The selected trades
 	 */
-	rankSignals(trades, selectionMethod, availableSlots) {
+	rankSignals(trades: Trade[], selectionMethod: RankingMethod, availableSlots: number) {
 		if (trades.length <= availableSlots) {
 			return trades
 		}
@@ -184,7 +220,13 @@ class Portfolio {
 	 * @param {Map} params.timeline Map with the historic changes of the cash available in the portfolio.
 	 * @returns {Map} Map with the cash history added
 	 */
-	addCashBalanceHistory({ dateMap, timeline }) {
+	addCashBalanceHistory({
+		dateMap,
+		timeline,
+	}: {
+		dateMap: Map<string, PortfolioBalance>
+		timeline: Map<string, { cashAvailable?: number }>
+	}) {
 		timeline.forEach(({ cashAvailable }, key) => {
 			if (cashAvailable) {
 				dateMap.set(key, { ...dateMap.get(key), cashAvailable })
@@ -217,19 +259,20 @@ class Portfolio {
 	 * @param {DataFetcher} client DataFetcher instance
 	 * @returns {Array<Function>} Functions to be called in the queue to make sure not all runs at the same time.
 	 */
-	createTasks(groupedTrades, client) {
+	createTasks(groupedTrades: Map<number | string, Trade[]>, client: DataFetcher) {
 		return [...groupedTrades.entries()].map(([id, tradesInStock]) => {
 			return async () => {
 				// Get the price data
 				const { priceData } = await client.fetchStock({
 					id,
-					fieldString: 'priceData{ date, close }'
+					fieldString: 'priceData{ date, close }',
 				})
-
-				return {
-					tradeGroup: tradesInStock.map(trade => trade.getTradePerformance({ priceData })),
-					id
+				const output = {
+					tradeGroup: tradesInStock.map((trade) => trade.getTradePerformance({ priceData })),
+					id,
 				}
+
+				return output
 			}
 		})
 	}
@@ -245,31 +288,29 @@ class Portfolio {
 	 * @returns {Map} the portfolio history over time
 	 */
 	async generateTimeline({
-		trades = this.historicalTrades,
-		timeline = this.timeline,
-		queue = this.queue,
-		DataFetcher = this.DataFetcher
-	}) {
+		trades = this.historicalTrades as Trade[],
+		timeline = this.timeline as Map<string, PortfolioBalance>,
+		queue = this.#queue,
+		client = this.#dataFetcher,
+	} = {}) {
 		const dateMap = await this.getDateMap()
 
 		// Group the stocks by id to only have to fetch the data once more.
 		const groupedTrades = this.groupTradesByStock(trades)
-		const client = new DataFetcher()
 		const tasks = this.createTasks(groupedTrades, client)
 		const finishedTasks = await queue(tasks, 10)
 
-		let previousValue = null
-		finishedTasks.forEach(({ tradeGroup, id }) => {
+		finishedTasks.forEach((t) => {
 			//! Note that this could be either a group of trades or error instance
-			if (tradeGroup instanceof Error) {
-				console.error(tradeGroup)
+			if (t instanceof Error) {
+				console.error(t)
 				return
 			}
 
-			tradeGroup.forEach(trade => {
+			t.tradeGroup.forEach((trade) => {
 				trade.forEach(({ date, value }) => {
-					const prev = this.checkAndAddValues(date, value, dateMap, previousValue, id)
-					previousValue = prev
+					const d = date instanceof Date ? date : new Date(date)
+					this.checkAndAddValues(d, value, dateMap, t.id)
 				})
 			})
 		})
@@ -277,15 +318,15 @@ class Portfolio {
 		const sortedMap = this.sortByDate(dateMap)
 		this.addCashBalanceHistory({ dateMap: sortedMap, timeline })
 
-		this.timeline = sortedMap // TODO Fix unnecessary with both return and assignment
+		this.timeline = sortedMap // TODO: Fix unnecessary with both return and assignment
 		return sortedMap
 	}
 
-	sortByDate(dateMap) {
-		const keys = [...dateMap.keys()].sort((a, b) => new Date(a) - new Date(b))
+	sortByDate(dateMap: Map<string, any>) {
+		const keys = [...dateMap.keys()].sort((a, b) => (new Date(a) > new Date(b) ? 1 : 0))
 		const output = new Map()
 
-		keys.forEach(key => output.set(key, dateMap.get(key)))
+		keys.forEach((key) => output.set(key, dateMap.get(key)))
 		return output
 	}
 
@@ -297,17 +338,24 @@ class Portfolio {
 	 * @param {object|null} previousValue The previous value to use if none already exist
 	 * @returns {object} The data added to this date to be carried into the next.
 	 */
-	checkAndAddValues(date, value, dateMap, id) {
+	checkAndAddValues(
+		date: Date,
+		value: number,
+		dateMap: Map<string, PortfolioBalance>,
+		id: number | string
+	) {
 		const tempData = dateMap.get(date.toISOString())
-		const existingData =
+		const hasNoData =
 			!tempData || (typeof tempData === 'object' && Object.keys(tempData).length < 1)
-				? {
-						total: 0,
-						totalPositionValue: 0,
-						numberOfPositionsOpen: 0,
-						positions: []
-				  }
-				: tempData
+
+		const existingData = hasNoData
+			? {
+					total: 0,
+					totalPositionValue: 0,
+					numberOfPositionsOpen: 0,
+					positions: [],
+			  }
+			: tempData
 
 		existingData.positions.push({ id, value })
 		existingData.totalPositionValue += value
@@ -327,10 +375,10 @@ class Portfolio {
 	 * @param {Array<Trade>} trades The trades to group
 	 * @returns {Map} The trades with the stock id as key
 	 */
-	groupTradesByStock(trades) {
+	groupTradesByStock(trades: Trade[]) {
 		const stockMap = new Map()
 
-		trades.forEach(trade => {
+		trades.forEach((trade) => {
 			const existingTrades = stockMap.get(trade.stock.id)
 			existingTrades
 				? stockMap.set(trade.stock.id, [...existingTrades, trade])
@@ -344,24 +392,27 @@ class Portfolio {
 	 * Generates a map with all the dates since the first trade was taken.
 	 * It has empty objects as values.
 	 * @param {object} deps dependencies
-	 * @param {DataFetcher} deps.DataFetcher The DataFetcher class
-	 * @returns {Map|null}
 	 */
-	async getDateMap({ DataFetcher = this.DataFetcher } = {}) {
-		const df = new DataFetcher()
-
-		const stock = await df.fetchStock({
+	async getDateMap({ dataFetcher = this.#dataFetcher } = {}): Promise<
+		Map<string, PortfolioBalance>
+	> {
+		const stock = await dataFetcher.fetchStock({
 			id: 19002,
-			fieldString: 'priceData{ date }'
+			fieldString: 'priceData{ date }',
 		})
 
 		if (!stock) {
 			return null
 		}
 
-		const kvArray = stock.priceData.map(({ date }) => [date.toISOString(), {}])
+		const m = new Map<string, any>()
 
-		return new Map(kvArray)
+		stock.priceData.forEach(({ date }) => {
+			const d = date instanceof Date ? date.toISOString() : date
+			m.set(d, {})
+		})
+
+		return m
 	}
 
 	/**
@@ -374,7 +425,7 @@ class Portfolio {
 	 * @param {Trade} Trade The trade class
 	 * @returns {Map} The trades grouped by dates
 	 */
-	generateSignalMaps(trades, Trade = this.Trade) {
+	generateSignalMaps(trades: Trade[], Trade = this.#Trade) {
 		const signalMap = new Map()
 
 		/**
@@ -384,15 +435,15 @@ class Portfolio {
 		 * @param {Date} date Date of the signal
 		 * @returns {void}
 		 */
-		const getAndPush = (trade, type, date) => {
+		const getAndPush = (trade: Trade, type: 'entry' | 'exit', date: Date) => {
 			if (signalMap.has(date.toISOString())) {
 				const signals = signalMap.get(date.toISOString())
 				signals[type].push(trade)
 				signalMap.set(date.toISOString(), signals)
 			} else {
 				const signals = {
-					entry: [],
-					exit: [] // TODO The exit may not be used so maybe remove it and only assign an empty object if type is exit?
+					entry: [] as Trade[],
+					exit: [] as Trade[], // TODO The exit may not be used so maybe remove it and only assign an empty object if type is exit?
 				}
 
 				signals[type].push(trade)
@@ -400,11 +451,11 @@ class Portfolio {
 			}
 		}
 
-		trades.forEach(t => {
+		trades.forEach((t) => {
 			const trade = t instanceof Trade ? t : new Trade(t)
 			// Add the trades to the Map
-			getAndPush(trade, 'entry', trade.entry.date)
-			getAndPush(trade, 'exit', trade.exit.date)
+			getAndPush(trade, 'entry', trade.entryDate)
+			getAndPush(trade, 'exit', trade.exitDate)
 		})
 
 		const sortedSignalArr = [...signalMap.entries()].sort(([first], [second]) =>

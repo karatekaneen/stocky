@@ -14,6 +14,8 @@ export type PricePoint = {
 	owners?: number
 }
 
+export type SignalType = 'enter' | 'exit'
+
 export type SignalParams = {
 	/**
 	 * The price where the signal was executed
@@ -30,7 +32,7 @@ export type SignalParams = {
 	/**
 	 * If it was entry or exit from the market
 	 */
-	type: 'enter' | 'exit'
+	type: SignalType
 	/**
 	 * Pending or already executed order?
 	 */
@@ -39,6 +41,11 @@ export type SignalParams = {
 	 * The stock which the order belongs to
 	 */
 	stock: Stock
+}
+
+export type TradeDailyPerformance = {
+	value: number
+	date: Date | string
 }
 
 export type StrategyRules = {
