@@ -75,6 +75,10 @@ class Signal {
 
 		return isStockValid && isPriceValid && isActionValid && isTypeValid
 	}
+
+	public toJSON() {
+		return { ...this }
+	}
 }
 
 export default Signal

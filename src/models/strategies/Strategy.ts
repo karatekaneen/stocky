@@ -3,7 +3,7 @@ import Trade from '../Trade'
 import DataFetcher from '../../utils/DataFetcher'
 import DateSearcher from '../../utils/DateSearcher'
 import Stock from '../Stock'
-import { PricePoint, StrategyRules, StrategyContext, Bias } from '../../types'
+import { PricePoint, StrategyRules, StrategyContext, Bias, BacktestResult } from '../../types'
 
 type SignalFunction = (x: string) => { signal?: Signal | null; context: StrategyContext }
 type OpenPositionPolicy = 'exclude' | 'conservative' | 'optimistic'
@@ -82,17 +82,6 @@ class Strategy {
 	}
 
 	/**
-	 * Output from the test function
-	 * @typedef TestOutput
-	 * @property {Array<Signal>} signals All the signals that the test generated
-	 * @property {Object} context The context as it was on the last bar
-	 * @property {Object|null} pendingSignal If a signal was created on the last day as the test ended it is marked as pending. Useful for live trading to know what to execute the day after.
-	 * @property {Array<Trade>} trades The trades that the test generated.
-	 * @property {Signal|null} closeOpenPosition If a position was open when the test ended, this sis the signal that was generated to close the open position. Useful to display open profit but mainly used to calculate the last trade.
-	 * @property {Trade|null} openTrade If there was an open position when the test ended, this summarizes the open profit etc. Depending on the openPositionPolicy in the Strategy it is either calculated on the last close or the "stop" price. It is also included as the last item in the `trades` prop.
-	 */
-
-	/**
 	 * The main test function that runs the backtest on a particular stock.
 	 * @param {Object} params
 	 * @param {Stock} params.stock The stock with the pricedata to test
@@ -114,7 +103,7 @@ class Strategy {
 		endDate?: Date | null
 		initialContext?: StrategyContext
 		dataFetcher?: DataFetcher
-	}) {
+	}): Promise<BacktestResult> {
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
 		// ? Maybe the better way is to add ability to override the default test function
 
@@ -209,7 +198,7 @@ class Strategy {
 			trades,
 			closeOpenPosition,
 			openTrade,
-		}
+		} as BacktestResult
 	}
 
 	/**

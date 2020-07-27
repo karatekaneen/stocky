@@ -109,4 +109,8 @@ export default class Stock {
 			return pricePoint
 		})
 	}
+
+	public toJSON() {
+		return { ...this }
+	}
 }
