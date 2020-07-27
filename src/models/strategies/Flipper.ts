@@ -111,16 +111,6 @@ class Flipper extends Strategy {
 
 		if (signal) {
 			newContext.lastSignal = signal
-
-			// console.log(newContext)
-		}
-
-		if (currentBar.date === null) {
-			console.log({
-				d: signalBar.date,
-				regime: this.updateRegime(signalBar),
-				x: newContext.regime,
-			})
 		}
 
 		return { signal, context: newContext }
