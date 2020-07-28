@@ -3,7 +3,14 @@ import Trade from '../Trade'
 import DataFetcher from '../../utils/DataFetcher'
 import DateSearcher from '../../utils/DateSearcher'
 import Stock from '../Stock'
-import { PricePoint, StrategyRules, StrategyContext, Bias, BacktestResult } from '../../types'
+import {
+	PricePoint,
+	StrategyRules,
+	StrategyContext,
+	Bias,
+	BacktestResult,
+	TestParameters,
+} from '../../types'
 
 type SignalFunction = (x: string) => { signal?: Signal | null; context: StrategyContext }
 type OpenPositionPolicy = 'exclude' | 'conservative' | 'optimistic'
@@ -97,13 +104,7 @@ class Strategy {
 		endDate = null,
 		initialContext = this.context,
 		dataFetcher = this.#dataFetcher,
-	}: {
-		stock: Stock
-		startDate?: Date | null
-		endDate?: Date | null
-		initialContext?: StrategyContext
-		dataFetcher?: DataFetcher
-	}): Promise<BacktestResult> {
+	}: TestParameters): Promise<BacktestResult> {
 		// TODO It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc.
 		// ? Maybe the better way is to add ability to override the default test function
 

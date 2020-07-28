@@ -1,6 +1,7 @@
 import Stock from '../models/Stock'
 import Signal from '../models/Signal'
 import Trade from '../models/Trade'
+import DataFetcher from '../utils/DataFetcher'
 
 export type PricePointFields = 'open' | 'close' | 'high' | 'low' | 'volume' | 'owners'
 
@@ -47,6 +48,14 @@ export type SignalParams = {
 export type TradeDailyPerformance = {
 	value: number
 	date: Date | string
+}
+
+export type TestParameters = {
+	stock: Stock
+	startDate?: Date | null
+	endDate?: Date | null
+	initialContext?: StrategyContext
+	dataFetcher?: DataFetcher
 }
 
 export type BacktestResult = {
