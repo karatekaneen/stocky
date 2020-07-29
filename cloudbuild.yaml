@@ -27,7 +27,6 @@ steps:
       - "--platform"
       - "managed"
       - "--service-account"
-      - "[SERVICE_ACCOUNT]@[PROJECT_ID].iam.gserviceaccount.com"
+      - "stocky-backtester@makeup-bauhn-se.iam.gserviceaccount.com"
       - "--max-instances"
       - "1"
-      - "--allow-unauthenticated"
