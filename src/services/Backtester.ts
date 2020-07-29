@@ -43,6 +43,8 @@ export default class Backtester {
 	} = {}): Promise<void> {
 		const stocks = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
 
+		await db.clearPendingSignals()
+
 		await queue<Signal | null>(
 			stocks.map((stock: Stock) => {
 				return async () => {

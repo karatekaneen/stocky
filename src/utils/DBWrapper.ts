@@ -65,6 +65,15 @@ export default class DBWrapper {
 		)
 	}
 
+	public async clearPendingSignals({
+		db = this.db,
+		pendingSignalCollection = this.pendingSignalCollection,
+	} = {}): Promise<void> {
+		const allDocs = await db.collection(pendingSignalCollection).listDocuments()
+
+		await Promise.all(allDocs.map(async (doc) => doc.delete()))
+	}
+
 	public async saveContext(
 		id: string | number,
 		context: StrategyContext,
