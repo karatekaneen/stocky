@@ -21,16 +21,6 @@ app.post('/', async (req: Request, res: Response) => {
 		res.status(400).send(`Bad Request: ${msg}`)
 		return
 	}
-	if (!req.body.message) {
-		const msg = 'invalid Pub/Sub message format'
-		console.error(`error: ${msg}`)
-		res.status(400).send(`Bad Request: ${msg}`)
-		return
-	}
-
-	const pubSubMessage = req.body.message
-	// const name = Buffer.from(pubSubMessage.data, 'base64').toString().trim()
-	console.log(pubSubMessage)
 
 	const backtester = new Backtester(new Flipper())
 
