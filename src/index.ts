@@ -6,6 +6,9 @@ import Backtester from './services/Backtester'
 import Flipper from './models/strategies/Flipper'
 
 config()
+config({ path: './.env.local' })
+
+console.log(process.env.GOOGLE_APPLICATION_CREDENTIALS)
 
 const app = express()
 app.use(bodyParser.json())
