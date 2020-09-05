@@ -3,7 +3,7 @@ import Signal from '../Signal'
 import DataFetcher from '../../utils/DataFetcher'
 import { StrategyRules, StrategyContext, PricePoint, Comparator, Bias } from '../../types'
 import Stock from '../Stock'
-import TechnicalAnalyst from '../TechnicalAnalyst'
+import TechnicalAnalyst from '../../utils/TechnicalAnalyst'
 
 type ProcessingInput = {
 	signalBar: PricePoint
