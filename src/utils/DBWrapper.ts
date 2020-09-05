@@ -7,6 +7,7 @@ export default class DBWrapper {
 	public signalCollection: string
 	public pendingSignalCollection: string
 	public contextCollection: string
+	public statsCollection: string
 
 	constructor({
 		db = Firestore,
@@ -14,12 +15,14 @@ export default class DBWrapper {
 		signalCollection = 'signals',
 		pendingSignalCollection = 'pending-signals',
 		contextCollection = 'context',
+		statsCollection = 'statistics',
 	} = {}) {
 		this.db = new db()
 		this.Timestamp = _Timestamp
 		this.signalCollection = signalCollection
 		this.pendingSignalCollection = pendingSignalCollection
 		this.contextCollection = contextCollection
+		this.statsCollection = statsCollection
 	}
 
 	async writeDocument(
@@ -63,6 +66,16 @@ export default class DBWrapper {
 			id,
 			JSON.parse(JSON.stringify(pendingSignal))
 		)
+	}
+
+	public async saveStats(
+		documentName: string,
+		name: string,
+		description: string,
+		data: unknown,
+		{ db = this.db, statsCollection = this.statsCollection } = {}
+	): Promise<void> {
+		await db.collection(statsCollection).doc(documentName).set({ name, description, data })
 	}
 
 	public async clearPendingSignals({

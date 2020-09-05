@@ -1,9 +1,10 @@
-import { BacktestResult, TestParameters } from '../types'
+import { BacktestResult, TestParameters, VolumeComparison } from '../types'
 import DataFetcher from '../utils/DataFetcher'
 import DBWrapper from '../utils/DBWrapper'
 import queue from '../utils/queue'
 import Signal from '../models/Signal'
 import Stock from '../models/Stock'
+import Analyzer from '../utils/Analyzer'
 
 interface IStrategy {
 	test: (t: TestParameters) => Promise<BacktestResult>
@@ -15,6 +16,7 @@ export default class Backtester {
 
 	#dataFetcher: DataFetcher
 	#db: DBWrapper
+	#Analyzer: Analyzer
 	#queue: typeof queue
 
 	constructor(
@@ -22,6 +24,7 @@ export default class Backtester {
 		{
 			_DataFetcher = DataFetcher,
 			_DBWrapper = DBWrapper,
+			_Analyzer = Analyzer,
 			_queue = queue,
 			concurrentTests = 8,
 		} = {}
@@ -33,6 +36,7 @@ export default class Backtester {
 
 		this.#dataFetcher = new _DataFetcher()
 		this.#db = new _DBWrapper()
+		this.#Analyzer = _Analyzer
 	}
 
 	public async run({
@@ -40,30 +44,51 @@ export default class Backtester {
 		db = this.#db,
 		queue = this.#queue,
 		strategy = this.strategy,
-	} = {}): Promise<void> {
-		const stocks = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
+	} = {}): Promise<
+		{
+			pendingSignal: Signal
+			volumeComparison: VolumeComparison[]
+		}[]
+	> {
+		const stockss = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
+		const stocks = stockss.slice(20, 27)
+		// await db.clearPendingSignals()
 
-		await db.clearPendingSignals()
-
-		await queue<Signal | null>(
+		const responses = await queue<{
+			pendingSignal: Signal
+			volumeComparison: VolumeComparison[]
+		} | null>(
 			stocks.map((stock: Stock) => {
 				return async () => {
 					console.log('Testing: ', stock.name)
-					const { context, pendingSignal, signals }: BacktestResult = await strategy.test({
+					const {
+						context,
+						pendingSignal,
+						signals,
+						trades,
+						priceData,
+					}: BacktestResult = await strategy.test({
 						stock,
 					})
 					const id = stock.id
 
-					await Promise.all([
-						db.saveSignals(id, signals),
-						db.savePendingSignal(id, pendingSignal),
-						db.saveContext(id, context),
-					])
+					const volumeComparison = Analyzer.resultToVolume(trades, priceData)
 
-					return pendingSignal
+					// await Promise.all([
+					// 	db.saveSignals(id, signals),
+					// 	db.savePendingSignal(id, pendingSignal),
+					// 	db.saveContext(id, context),
+					// ])
+
+					return { pendingSignal, volumeComparison }
 				}
 			}),
 			8
 		)
+
+		return responses.filter((r) => r instanceof Error === false) as {
+			pendingSignal: Signal
+			volumeComparison: VolumeComparison[]
+		}[]
 	}
 }

@@ -86,6 +86,11 @@ export type BacktestResult = {
 	 *  It is also included as the last item in the `trades` prop.
 	 */
 	openTrade: Trade | null
+
+	/**
+	 * The price data that was being tested. Used for later analasysis
+	 */
+	priceData: PricePoint[]
 }
 
 export type StrategyRules = {
@@ -111,3 +116,5 @@ export type StrategyContext = {
 }
 
 export type Bias = 'bull' | 'bear' | 'neutral'
+
+export type VolumeComparison = { volume: number; result: number }

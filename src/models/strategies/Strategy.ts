@@ -90,11 +90,11 @@ class Strategy {
 
 	/**
 	 * The main test function that runs the backtest on a particular stock.
-	 * @param {Object} params
-	 * @param {Stock} params.stock The stock with the pricedata to test
-	 * @param {Date} params.startDate The date to start the test. Defaults to first date
-	 * @param {Date} params.endDate The date to end the test. Defaults to last date
-	 * @param {Object} params.initialContext If any initial context should be used it can be passed here.
+	 * @param params
+	 * @param params.stock The stock with the pricedata to test
+	 * @param params.startDate The date to start the test. Defaults to first date
+	 * @param params.endDate The date to end the test. Defaults to last date
+	 * @param params.initialContext If any initial context should be used it can be passed here.
 	 * @returns {TestOutput}
 	 * @todo It may be a good idea to refactor to pass all the data and index instead to allow for more complex calculations etc. OR make the function in the same way as `processBar` to force each strategy to implement own test function?
 	 */
@@ -110,7 +110,7 @@ class Strategy {
 
 		const { priceData }: Stock = await dataFetcher.fetchStock({
 			id: stock.id,
-			fieldString: 'priceData{open, high, low, close, date}',
+			fieldString: 'priceData{open, high, low, close, date, volume}',
 		})
 		let openTrade = null
 
@@ -199,7 +199,8 @@ class Strategy {
 			trades,
 			closeOpenPosition,
 			openTrade,
-		} as BacktestResult
+			priceData,
+		}
 	}
 
 	/**

@@ -4,6 +4,7 @@ import { config } from 'dotenv'
 import * as bodyParser from 'body-parser'
 import Backtester from './services/Backtester'
 import Flipper from './models/strategies/Flipper'
+import Analyzer from './utils/Analyzer'
 
 config()
 config({ path: './.env.local' })
@@ -24,7 +25,8 @@ app.post('/', async (req: Request, res: Response) => {
 
 	const backtester = new Backtester(new Flipper())
 
-	await backtester.run()
+	const responses = await backtester.run()
+	await Analyzer.mergeVolumeComparisons(responses.map((r) => r.volumeComparison))
 
 	res.status(204).send()
 })
