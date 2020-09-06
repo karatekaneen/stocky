@@ -8,24 +8,26 @@ export default class Analyzer {
 	static resultToVolume(
 		trades: Trade[],
 		priceData: PricePoint[],
-		period = [200, 20]
+		lookback = 200,
+		{ technicalAnalyst = new TechnicalAnalyst() } = {}
 	): VolumeComparison[] {
 		const withCashVolume = priceData.map((p) => {
 			p.volume = ((p.open + p.close + p.high + p.low + p.close) / 5) * p.volume
 			return p
 		})
 
-		const volume200 = new TechnicalAnalyst().movingAverage({
+		const volumeMap = technicalAnalyst.movingAverage({
 			data: withCashVolume,
 			field: 'volume',
-			lookback: 200,
+			lookback,
 			includeField: false,
 			type: 'SMA',
 		})
 
+		// console.log(volumeMap)
 		return trades.map((t) => ({
 			result: t.resultPercent,
-			volume: volume200.get(t.entryDate.toISOString()).average,
+			volume: volumeMap.get(t.entryDate.toISOString())?.average,
 		}))
 	}
 
