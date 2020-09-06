@@ -222,4 +222,76 @@ describe('Database Wrapper', () => {
 			expect(writeDocument.mock.calls[0][2]).toEqual({ data: 'context' })
 		})
 	})
+
+	describe('Save stats', () => {
+		let writeDocument: any
+
+		beforeEach(() => {
+			writeDocument = jest.fn()
+
+			d.writeDocument = writeDocument
+		})
+
+		it('should use provided collection', async () => {
+			await d.saveStats(
+				'my-document',
+				'document name',
+				'the discription of the stats',
+				{ data: 'some data' },
+				{ statsCollection: 'custom-collection' }
+			)
+
+			expect(writeDocument.mock.calls[0][0]).toBe('custom-collection')
+		})
+
+		it('should use default collection if none provided', async () => {
+			await d.saveStats('my-document', 'document name', 'the discription of the stats', {
+				data: 'some data',
+			})
+
+			expect(writeDocument.mock.calls[0][0]).toBe('statistics')
+		})
+
+		it('should use provided document name', async () => {
+			await d.saveStats('my-document', 'document name', 'the discription of the stats', {
+				data: 'some data',
+			})
+
+			expect(writeDocument.mock.calls[0][1]).toBe('my-document')
+		})
+
+		it('shoud pass name, description and data as document data', async () => {
+			await d.saveStats(
+				'my-document',
+				'document name',
+				'the discription of the stats',
+				{ data: 'some data' },
+				{ statsCollection: 'custom-collection' }
+			)
+
+			expect(writeDocument.mock.calls[0][2]).toEqual({
+				data: { data: 'some data' },
+				description: 'the discription of the stats',
+				name: 'document name',
+			})
+		})
+
+		it('should propagate errors', async () => {
+			expect.hasAssertions()
+
+			writeDocument.mockRejectedValue(new Error('this went poopoo'))
+
+			try {
+				await d.saveStats(
+					'my-document',
+					'document name',
+					'the discription of the stats',
+					{ data: 'some data' },
+					{ statsCollection: 'custom-collection' }
+				)
+			} catch (err) {
+				expect(err.message).toBe('this went poopoo')
+			}
+		})
+	})
 })

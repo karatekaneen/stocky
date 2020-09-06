@@ -25,6 +25,13 @@ export default class DBWrapper {
 		this.statsCollection = statsCollection
 	}
 
+	/**
+	 * Util method for writing to database.
+	 * @param collection Name of the collection to write to
+	 * @param id Id of the document to write
+	 * @param data The data to write to the document
+	 * @param deps Deps to be injected for testing
+	 */
 	async writeDocument(
 		collection: string,
 		id: string | number,
@@ -40,6 +47,12 @@ export default class DBWrapper {
 		await db.collection(collection).doc(docId).set(data)
 	}
 
+	/**
+	 * Save signals in to each stock's signals document
+	 * @param id Id of the stock that the signals belong to
+	 * @param signals The signals to write to the database
+	 * @param settings General settings
+	 */
 	public async saveSignals(
 		id: string | number,
 		signals: Signal[],
@@ -54,6 +67,12 @@ export default class DBWrapper {
 		})
 	}
 
+	/**
+	 * Writes the pending signal to the collection with the stock's id as document id
+	 * @param id Id of the stock that got a pending signal
+	 * @param pendingSignal The signal that was triggered
+	 * @param Settings General settings
+	 */
 	public async savePendingSignal(
 		id: string | number,
 		pendingSignal: Signal | null,
@@ -68,16 +87,32 @@ export default class DBWrapper {
 		)
 	}
 
+	/**
+	 * Writes statistics to the database. Uses the first parameter as document name.
+	 * @param documentName Name of the document to use
+	 * @param name Name of the statistic being written
+	 * @param description Description of the stats
+	 * @param data The actual statistics
+	 * @param settings General Settings
+	 */
 	public async saveStats(
 		documentName: string,
 		name: string,
 		description: string,
 		data: unknown,
-		{ db = this.db, statsCollection = this.statsCollection } = {}
+		{ statsCollection = this.statsCollection } = {}
 	): Promise<void> {
-		await db.collection(statsCollection).doc(documentName).set({ name, description, data })
+		await this.writeDocument(statsCollection, documentName, {
+			name,
+			description,
+			data,
+		})
 	}
 
+	/**
+	 * Removes all documents in the "Pending signal" collection to reset each day.
+	 * @param deps To be injected for testing
+	 */
 	public async clearPendingSignals({
 		db = this.db,
 		pendingSignalCollection = this.pendingSignalCollection,
@@ -87,6 +122,12 @@ export default class DBWrapper {
 		await Promise.all(allDocs.map(async (doc) => doc.delete()))
 	}
 
+	/**
+	 * Saves the context to each stocks context document in the database's context collection.
+	 * @param id Id of the stock that the context belongs to
+	 * @param context The actual data to write to the database
+	 * @param settings General settings
+	 */
 	public async saveContext(
 		id: string | number,
 		context: StrategyContext,

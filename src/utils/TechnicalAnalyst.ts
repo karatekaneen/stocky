@@ -19,7 +19,7 @@ export default class TechnicalAnalyst {
 		lookback,
 		data,
 		type,
-		includeField,
+		includeField, // TODO: Make static
 	}: {
 		field: keyof Omit<PricePoint, 'time' | 'date'>
 		lookback: number
