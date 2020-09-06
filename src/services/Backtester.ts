@@ -52,7 +52,7 @@ export default class Backtester {
 	> {
 		const stockss = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
 		const stocks = stockss.slice(20, 27)
-		// await db.clearPendingSignals()
+		await db.clearPendingSignals()
 
 		const responses = await queue<{
 			pendingSignal: Signal
@@ -74,11 +74,11 @@ export default class Backtester {
 
 					const volumeComparison = Analyzer.resultToVolume(trades, priceData)
 
-					// await Promise.all([
-					// 	db.saveSignals(id, signals),
-					// 	db.savePendingSignal(id, pendingSignal),
-					// 	db.saveContext(id, context),
-					// ])
+					await Promise.all([
+						db.saveSignals(id, signals),
+						db.savePendingSignal(id, pendingSignal),
+						db.saveContext(id, context),
+					])
 
 					return { pendingSignal, volumeComparison }
 				}
