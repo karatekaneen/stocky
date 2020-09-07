@@ -1,6 +1,7 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
 import Signal from '../models/Signal'
 import { StrategyContext } from 'src/types'
+
 export default class DBWrapper {
 	public db: Firestore
 	public Timestamp: typeof Timestamp

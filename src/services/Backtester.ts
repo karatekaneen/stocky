@@ -50,8 +50,7 @@ export default class Backtester {
 			volumeComparison: VolumeComparison[]
 		}[]
 	> {
-		const stockss = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
-		const stocks = stockss.slice(20, 27)
+		const stocks = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
 		await db.clearPendingSignals()
 
 		const responses = await queue<{
