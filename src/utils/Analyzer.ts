@@ -1,10 +1,20 @@
 import Trade from '../models/Trade'
 import { PricePoint, VolumeComparison } from 'src/types'
 import TechnicalAnalyst from './TechnicalAnalyst'
+import DBWrapper from './DBWrapper'
 
 export default class Analyzer {
 	constructor() {}
 
+	/**
+	 * Creates a comparison between the $ traded over `lookback` days (from the entry)
+	 * compared with the result.
+	 * @param trades Trades ffrom a specific stock
+	 * @param priceData Pricedata for that specific stock
+	 * @param lookback The period to get the average from
+	 * @param deps to be injected for testing
+	 * @returns Array with the `result` and `volume`
+	 */
 	static resultToVolume(
 		trades: Trade[],
 		priceData: PricePoint[],
@@ -31,9 +41,25 @@ export default class Analyzer {
 		}))
 	}
 
-	static async mergeVolumeComparisons(comparisons: VolumeComparison[][]): Promise<void> {
-		const all = comparisons.flat().filter((c) => c.result && c.volume)
+	/**
+	 * Saves the volume comparisons to the database.
+	 * @param comparisons The data to save to the database
+	 * @param Deps to be injected for testing
+	 */
+	static async mergeAndSaveVolumeComparisons(
+		comparisons: VolumeComparison[][],
+		{ db = new DBWrapper() } = {}
+	): Promise<void> {
+		const cleanData = comparisons
+			.flat()
+			.filter((c) => c.result && c.volume)
+			.sort((a, b) => a.volume - b.volume)
 
-		console.log(all)
+		await db.saveStats(
+			'volume-to-result',
+			'result compared to volume traded',
+			'The 200d average traded volume compared to the result of each trade',
+			cleanData
+		)
 	}
 }

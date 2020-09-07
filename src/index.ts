@@ -26,7 +26,7 @@ app.post('/', async (req: Request, res: Response) => {
 	const backtester = new Backtester(new Flipper())
 
 	const responses = await backtester.run()
-	await Analyzer.mergeVolumeComparisons(responses.map((r) => r.volumeComparison))
+	await Analyzer.mergeAndSaveVolumeComparisons(responses.map((r) => r.volumeComparison))
 
 	res.status(204).send()
 })

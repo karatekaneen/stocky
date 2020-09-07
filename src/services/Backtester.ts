@@ -16,7 +16,6 @@ export default class Backtester {
 
 	#dataFetcher: DataFetcher
 	#db: DBWrapper
-	#Analyzer: Analyzer
 	#queue: typeof queue
 
 	constructor(
@@ -24,7 +23,6 @@ export default class Backtester {
 		{
 			_DataFetcher = DataFetcher,
 			_DBWrapper = DBWrapper,
-			_Analyzer = Analyzer,
 			_queue = queue,
 			concurrentTests = 8,
 		} = {}
@@ -36,7 +34,6 @@ export default class Backtester {
 
 		this.#dataFetcher = new _DataFetcher()
 		this.#db = new _DBWrapper()
-		this.#Analyzer = _Analyzer
 	}
 
 	public async run({
