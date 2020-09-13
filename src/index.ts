@@ -26,7 +26,31 @@ app.post('/', async (req: Request, res: Response) => {
 	const backtester = new Backtester(new Flipper())
 
 	const responses = await backtester.run()
-	await Analyzer.mergeAndSaveVolumeComparisons(responses.map((r) => r.volumeComparison))
+
+	const { volumeRatios, volumeComparison } = responses.reduce(
+		(acc, { volumeComparison, volumeRatios }) => {
+			acc.volumeComparison.push(volumeComparison)
+			acc.volumeRatios.push(volumeRatios)
+
+			return acc
+		},
+		{ volumeComparison: [], volumeRatios: [] }
+	)
+
+	await Promise.all([
+		Analyzer.mergeAndSaveVolumeComparisons(
+			volumeComparison,
+			'volume-to-result',
+			'result compared to volume traded',
+			'The 200d average traded volume compared to the result of each trade'
+		),
+		Analyzer.mergeAndSaveVolumeComparisons(
+			volumeRatios,
+			'volume-ratio-to-result',
+			'result compared to volume ratio',
+			'The 200d average traded volume compared to the 50d avg traded volume and the result of each trade'
+		),
+	])
 
 	res.status(204).send()
 })

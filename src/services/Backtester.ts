@@ -1,4 +1,4 @@
-import { BacktestResult, TestParameters, VolumeComparison } from '../types'
+import { BacktestResult, ResultStatistic, TestParameters, VolumeComparison } from '../types'
 import DataFetcher from '../utils/DataFetcher'
 import DBWrapper from '../utils/DBWrapper'
 import queue from '../utils/queue'
@@ -44,7 +44,8 @@ export default class Backtester {
 	} = {}): Promise<
 		{
 			pendingSignal: Signal
-			volumeComparison: VolumeComparison[]
+			volumeComparison: ResultStatistic[]
+			volumeRatios: ResultStatistic[]
 		}[]
 	> {
 		const stocks = await dataFetcher.fetchStocks({ fieldString: 'id, name, list' })
@@ -52,7 +53,8 @@ export default class Backtester {
 
 		const responses = await queue<{
 			pendingSignal: Signal
-			volumeComparison: VolumeComparison[]
+			volumeComparison: ResultStatistic[]
+			volumeRatios: ResultStatistic[]
 		} | null>(
 			stocks.map((stock: Stock) => {
 				return async () => {
@@ -69,6 +71,7 @@ export default class Backtester {
 					const id = stock.id
 
 					const volumeComparison = Analyzer.resultToVolume(trades, priceData)
+					const volumeRatios = Analyzer.resultToVolumeRatio(trades, priceData)
 
 					await Promise.all([
 						db.saveSignals(id, signals),
@@ -76,7 +79,7 @@ export default class Backtester {
 						db.saveContext(id, context),
 					])
 
-					return { pendingSignal, volumeComparison }
+					return { pendingSignal, volumeComparison, volumeRatios }
 				}
 			}),
 			8
@@ -84,7 +87,8 @@ export default class Backtester {
 
 		return responses.filter((r) => r instanceof Error === false) as {
 			pendingSignal: Signal
-			volumeComparison: VolumeComparison[]
+			volumeComparison: ResultStatistic[]
+			volumeRatios: ResultStatistic[]
 		}[]
 	}
 }

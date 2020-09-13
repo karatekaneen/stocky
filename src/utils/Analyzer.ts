@@ -1,5 +1,5 @@
 import Trade from '../models/Trade'
-import { PricePoint, VolumeComparison } from 'src/types'
+import { PricePoint, ResultStatistic, VolumeComparison } from '../types'
 import TechnicalAnalyst from './TechnicalAnalyst'
 import DBWrapper from './DBWrapper'
 
@@ -13,14 +13,14 @@ export default class Analyzer {
 	 * @param priceData Pricedata for that specific stock
 	 * @param lookback The period to get the average from
 	 * @param deps to be injected for testing
-	 * @returns Array with the `result` and `volume`
+	 * @returns Array with the `result` and `value`
 	 */
 	static resultToVolume(
 		trades: Trade[],
 		priceData: PricePoint[],
 		lookback = 200,
 		{ technicalAnalyst = new TechnicalAnalyst() } = {}
-	): VolumeComparison[] {
+	): ResultStatistic[] {
 		const withCashVolume = priceData.map((p) => {
 			p.volume = ((p.open + p.close + p.high + p.low + p.close) / 5) * p.volume
 			return p
@@ -34,11 +34,60 @@ export default class Analyzer {
 			type: 'SMA',
 		})
 
-		// console.log(volumeMap)
 		return trades.map((t) => ({
 			result: t.resultPercent,
-			volume: volumeMap.get(t.entryDate.toISOString())?.average,
+			value: volumeMap.get(t.entryDate.toISOString())?.average,
 		}))
+	}
+
+	/**
+	 * Creates a comparison between the $ traded over `firstLookback` days (from the entry)
+	 * divided by the volume over the `shortLookback` days compared with the result.
+	 * @param trades Trades ffrom a specific stock
+	 * @param priceData Pricedata for that specific stock
+	 * @param firstLookback the first lookback period length
+	 * @param secondLookback The second lookback period length
+	 * @param deps to be injected for testing
+	 * @returns Array with the `result` and `value`
+	 */
+	static resultToVolumeRatio(
+		trades: Trade[],
+		priceData: PricePoint[],
+		firstLookback = 50,
+		secondLookback = 200,
+		{ technicalAnalyst = new TechnicalAnalyst() } = {}
+	): ResultStatistic[] {
+		const withCashVolume = priceData.map((p) => {
+			p.volume = ((p.open + p.close + p.high + p.low + p.close) / 5) * p.volume
+			return p
+		})
+
+		const firstMap = technicalAnalyst.movingAverage({
+			data: withCashVolume,
+			field: 'volume',
+			lookback: firstLookback,
+			includeField: false,
+			type: 'SMA',
+		})
+
+		const secondMap = technicalAnalyst.movingAverage({
+			data: withCashVolume,
+			field: 'volume',
+			lookback: secondLookback,
+			includeField: false,
+			type: 'SMA',
+		})
+
+		return trades.map((t) => {
+			const first = firstMap.get(t.entryDate.toISOString())?.average
+			const second = secondMap.get(t.entryDate.toISOString())?.average
+
+			const value = first && second ? first / second : null
+			return {
+				result: t.resultPercent,
+				value,
+			}
+		})
 	}
 
 	/**
@@ -47,19 +96,17 @@ export default class Analyzer {
 	 * @param Deps to be injected for testing
 	 */
 	static async mergeAndSaveVolumeComparisons(
-		comparisons: VolumeComparison[][],
+		comparisons: ResultStatistic[][],
+		documentName: string,
+		name: string,
+		description: string,
 		{ db = new DBWrapper() } = {}
 	): Promise<void> {
 		const cleanData = comparisons
 			.flat()
-			.filter((c) => c.result && c.volume)
-			.sort((a, b) => a.volume - b.volume)
+			.filter((c) => c.result && c.value)
+			.sort((a, b) => a.value - b.value)
 
-		await db.saveStats(
-			'volume-to-result',
-			'result compared to volume traded',
-			'The 200d average traded volume compared to the result of each trade',
-			cleanData
-		)
+		await db.saveStats(documentName, name, description, cleanData)
 	}
 }

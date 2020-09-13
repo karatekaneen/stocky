@@ -118,3 +118,4 @@ export type StrategyContext = {
 export type Bias = 'bull' | 'bear' | 'neutral'
 
 export type VolumeComparison = { volume: number; result: number }
+export type ResultStatistic = { result: number; value: number }
