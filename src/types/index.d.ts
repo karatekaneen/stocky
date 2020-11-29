@@ -28,6 +28,10 @@ export type SignalParams = {
 	 */
 	date: Date | null | string
 	/**
+	 * Date when the signal was triggered
+	 */
+	triggerDate: Date | null | string
+	/**
 	 * If it is a buy or sell order
 	 */
 	action: 'buy' | 'sell'

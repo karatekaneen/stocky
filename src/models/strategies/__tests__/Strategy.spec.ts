@@ -352,6 +352,7 @@ describe('Strategy class', () => {
 			expect(Signal).toHaveBeenCalledWith({
 				action: 'sell',
 				date: new Date('2019-12-13T00:00:00.000Z'),
+				triggerDate: new Date('2019-12-13T00:00:00.000Z'),
 				price: 20,
 				stock,
 				status: 'pending',
@@ -384,6 +385,7 @@ describe('Strategy class', () => {
 			expect(Signal).toHaveBeenCalledWith({
 				action: 'sell',
 				date: new Date('2019-12-13T00:00:00.000Z'),
+				triggerDate: new Date('2019-12-13T00:00:00.000Z'),
 				price: 20,
 				stock,
 				status: 'pending',
@@ -416,6 +418,7 @@ describe('Strategy class', () => {
 			expect(Signal).toHaveBeenCalledWith({
 				action: 'sell',
 				date: new Date('2019-12-13T00:00:00.000Z'),
+				triggerDate: new Date('2019-12-13T00:00:00.000Z'),
 				price: 25,
 				stock,
 				status: 'pending',

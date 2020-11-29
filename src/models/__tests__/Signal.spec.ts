@@ -9,6 +9,7 @@ beforeEach(() => {
 		stock: { name: 'HM B', id: '1235', list: 'Large Cap sthlm' },
 		price: 99,
 		date: new Date('2020-01-19T15:16:36.143Z'),
+		triggerDate: new Date('2020-01-18T15:16:36.143Z'),
 		action: 'buy',
 		type: 'enter',
 	}
@@ -18,9 +19,10 @@ beforeEach(() => {
 describe('Signal', () => {
 	it('has a working constructor', () => {
 		expect(signal instanceof Signal).toBe(true)
-		expect(signal).toEqual({
+		expect(signal).toMatchObject({
 			action: 'buy',
-			date: new Date('2020-01-19T15:16:36.143Z'),
+			date: validInput.date,
+			triggerDate: validInput.triggerDate,
 			price: 99,
 			status: 'executed',
 			stock: { id: '1235', list: 'Large Cap sthlm', name: 'HM B' },

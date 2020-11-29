@@ -8,6 +8,7 @@ import { SignalParams } from '../types'
 class Signal {
 	public price: number
 	public date: Date
+	public triggerDate: Date
 	public action: 'buy' | 'sell'
 	public type: 'enter' | 'exit'
 	public status: 'pending' | 'executed'
@@ -22,7 +23,7 @@ class Signal {
 	 * @param {String} params.action "buy" or "sell"
 	 * @param {String} params.type "enter" or "exit"
 	 */
-	constructor({ stock, price, date, action, type }: SignalParams) {
+	constructor({ stock, price, date, triggerDate, action, type }: SignalParams) {
 		if (
 			!this.validateInput({
 				stock,
@@ -42,6 +43,7 @@ class Signal {
 		} else {
 			this.date = new Date()
 		}
+		this.triggerDate = triggerDate instanceof Date ? triggerDate : new Date(triggerDate)
 
 		this.price = price
 		this.action = action

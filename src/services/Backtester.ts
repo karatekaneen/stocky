@@ -77,6 +77,7 @@ export default class Backtester {
 						db.saveSignals(id, signals),
 						db.savePendingSignal(id, pendingSignal),
 						db.saveContext(id, context),
+						db.saveTrades(id, trades),
 					])
 
 					return { pendingSignal, volumeComparison, volumeRatios }

@@ -1,11 +1,13 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
 import Signal from '../models/Signal'
 import { StrategyContext } from 'src/types'
+import Trade from 'src/models/Trade'
 
 export default class DBWrapper {
 	public db: Firestore
 	public Timestamp: typeof Timestamp
 	public signalCollection: string
+	public tradeCollection: string
 	public pendingSignalCollection: string
 	public contextCollection: string
 	public statsCollection: string
@@ -14,6 +16,7 @@ export default class DBWrapper {
 		db = Firestore,
 		_Timestamp = Timestamp,
 		signalCollection = 'signals',
+		tradeCollection = 'trades',
 		pendingSignalCollection = 'pending-signals',
 		contextCollection = 'context',
 		statsCollection = 'statistics',
@@ -21,6 +24,7 @@ export default class DBWrapper {
 		this.db = new db()
 		this.Timestamp = _Timestamp
 		this.signalCollection = signalCollection
+		this.tradeCollection = tradeCollection
 		this.pendingSignalCollection = pendingSignalCollection
 		this.contextCollection = contextCollection
 		this.statsCollection = statsCollection
@@ -68,6 +72,28 @@ export default class DBWrapper {
 		})
 	}
 
+	public async saveTrades(
+		id: string | number,
+		trades: Trade[],
+		{ tradeCollection = this.tradeCollection } = {}
+	): Promise<void> {
+		if (!trades || trades.length === 0) {
+			return
+		}
+
+		await this.writeDocument(tradeCollection, id, {
+			trades: trades.map(({ entryPrice, exitPrice, entryDate, exitDate, entry }) => ({
+				entryPrice,
+				exitPrice,
+				triggerDate: entry.triggerDate,
+				entryDate,
+				exitDate,
+				stockId: entry.stock.id,
+				stockName: entry.stock.name,
+				stockList: entry.stock.list,
+			})),
+		})
+	}
 	/**
 	 * Writes the pending signal to the collection with the stock's id as document id
 	 * @param id Id of the stock that got a pending signal

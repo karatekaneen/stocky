@@ -65,7 +65,7 @@ class Strategy {
 		strategyName = 'flipper',
 		initialContext,
 		signalFunction,
-		openPositionPolicy = 'conservative',
+		openPositionPolicy = 'optimistic',
 		rules,
 		_Signal = Signal,
 		_Trade = Trade,
@@ -266,6 +266,8 @@ class Strategy {
 					status: 'pending',
 					price: useTriggerPrice ? context.triggerPrice : currentBar.close,
 					date: currentBar.date instanceof Date ? currentBar.date : new Date(currentBar.date),
+					triggerDate:
+						currentBar.date instanceof Date ? currentBar.date : new Date(currentBar.date),
 				})
 			} else if (isSignalsLengthOdd && !isLastSignalEnter) {
 				// ! Logic error somewhere :(
