@@ -4,7 +4,7 @@ import { config } from 'dotenv'
 import * as bodyParser from 'body-parser'
 import Backtester from './services/Backtester'
 import Flipper from './models/strategies/Flipper'
-import Analyzer from './utils/Analyzer'
+import { writeFileSync } from 'fs'
 
 config()
 config({ path: './.env.local' })
@@ -13,46 +13,31 @@ const app = express()
 app.use(bodyParser.json())
 
 const PORT = process.env.PORT || 8080
-
-app.post('/', async (req: Request, res: Response) => {
-	console.log(req.body)
-	if (!req.body) {
-		const msg = 'no Pub/Sub message received'
-		console.error(`error: ${msg}`)
-		res.status(400).send(`Bad Request: ${msg}`)
-		return
-	}
-
+;(async () => {
 	const backtester = new Backtester(new Flipper())
 
 	const responses = await backtester.run()
+	writeFileSync('wtf', JSON.stringify(responses, null, 2))
+})()
 
-	const { volumeRatios, volumeComparison } = responses.reduce(
-		(acc, { volumeComparison, volumeRatios }) => {
-			acc.volumeComparison.push(volumeComparison)
-			acc.volumeRatios.push(volumeRatios)
+app.post('/', async (req: Request, res: Response) => {
+	try {
+		if (!req.body) {
+			const msg = 'no Pub/Sub message received'
+			console.error(`error: ${msg}`)
+			res.status(400).send(`Bad Request: ${msg}`)
+			return
+		}
 
-			return acc
-		},
-		{ volumeComparison: [], volumeRatios: [] }
-	)
+		const backtester = new Backtester(new Flipper())
 
-	await Promise.all([
-		Analyzer.mergeAndSaveVolumeComparisons(
-			volumeComparison,
-			'volume-to-result',
-			'result compared to volume traded',
-			'The 200d average traded volume compared to the result of each trade'
-		),
-		Analyzer.mergeAndSaveVolumeComparisons(
-			volumeRatios,
-			'volume-ratio-to-result',
-			'result compared to volume ratio',
-			'The 200d average traded volume compared to the 50d avg traded volume and the result of each trade'
-		),
-	])
+		await backtester.run()
 
-	res.status(204).send()
+		res.status(204).send()
+	} catch (err) {
+		console.error(err)
+		res.status(500).send()
+	}
 })
 
 app.listen(PORT, () => console.log(`Listening on port: ${PORT}`))
