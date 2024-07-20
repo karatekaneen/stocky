@@ -4,7 +4,7 @@ import { config } from 'dotenv'
 import * as bodyParser from 'body-parser'
 import Backtester from './services/Backtester'
 import Flipper from './models/strategies/Flipper'
-import { writeFileSync } from 'fs'
+// import { writeFileSync } from 'fs'
 
 config()
 config({ path: './.env.local' })
@@ -13,12 +13,12 @@ const app = express()
 app.use(bodyParser.json())
 
 const PORT = process.env.PORT || 8080
-;(async () => {
-	const backtester = new Backtester(new Flipper())
+// ;(async () => {
+// 	const backtester = new Backtester(new Flipper())
 
-	const responses = await backtester.run()
-	writeFileSync('wtf', JSON.stringify(responses, null, 2))
-})()
+// 	const responses = await backtester.run()
+// 	writeFileSync('wtf', JSON.stringify(responses, null, 2))
+// })()
 
 app.post('/', async (req: Request, res: Response) => {
 	try {
